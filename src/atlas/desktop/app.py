@@ -3,7 +3,6 @@ import sys
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal, QSettings
 from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtCore import QThread, Signal, QSettings, Qt
 from PySide6.QtWidgets import (
