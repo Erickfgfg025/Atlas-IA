@@ -19,6 +19,12 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - A extração é explícita, não automática: o ATLAS não guarda indiscriminadamente cada mensagem.
 - A API implementa `GET /memories`, `POST /memories`, `PUT /memories/{id}` e `DELETE /memories/{id}`.
 
+## Histórico de conversas
+- O modo local grava conversas e mensagens no mesmo banco SQLite local, em tabelas separadas das memórias duradouras.
+- O ATLAS inclui até 12 mensagens recentes no contexto do Gemini; cada mensagem histórica é limitada antes de compor o prompt.
+- O ID da conversa ativa é guardado nas configurações locais do desktop para restaurar o histórico na próxima abertura.
+- Use **Nova conversa** para começar outro assunto sem carregar as mensagens da conversa anterior.
+- O histórico remoto no modo Supabase ainda não está implementado; a API retorna um erro explícito nesse modo, em vez de gravar conversas em um banco local compartilhado.
 ## Modos de operação
 - **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
 - **supabase (opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e migração aplicada ao projeto escolhido.
@@ -59,6 +65,6 @@ ruff check .
 
 ## Limites atuais
 - Nenhum deploy ou migração remota foi executado.
-- A recuperação usa sobreposição de termos, sem embeddings.
+- A recuperação de memórias usa sobreposição de termos, sem embeddings.
 - O modo Supabase foi testado com mocks, não com um projeto real.
 - Voz e automação do Windows ainda não foram implementadas.
