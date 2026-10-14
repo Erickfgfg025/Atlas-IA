@@ -53,10 +53,15 @@ class ApiWorker(QThread):
                     timeout=15.0,
                 )
             elif self.operation == "chat":
+                headers = (
+                    {"Authorization": f"Bearer {self.access_token}"}
+                    if self.access_token
+                    else {}
+                )
                 response = httpx.post(
                     f"{API_BASE}/chat",
                     json={"message": self.message},
-                    headers={"Authorization": f"Bearer {self.access_token}"},
+                    headers=headers,
                     timeout=60.0,
                 )
             elif self.operation == "logout":
@@ -103,6 +108,7 @@ class AtlasWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._access_token = ""
+        self._auth_mode = "supabase"
         self._worker: ApiWorker | None = None
         self._pending_operation = ""
         self.setWindowTitle("ATLAS AI")
@@ -152,13 +158,9 @@ class AtlasWindow(QMainWindow):
         self.check_api()
 
     def _set_chat_visible(self, visible: bool) -> None:
-        for widget in (
-            self.transcript,
-            self.input,
-            self.send_button,
-            self.logout_button,
-        ):
+        for widget in (self.transcript, self.input, self.send_button):
             widget.setVisible(visible)
+        self.logout_button.setVisible(visible and self._auth_mode == "supabase")
         for widget in (
             self.auth_title,
             self.email,
@@ -172,8 +174,16 @@ class AtlasWindow(QMainWindow):
         try:
             response = httpx.get(f"{API_BASE}/health", timeout=2.0)
             response.raise_for_status()
-            self.status.setText("ATLAS API: conectado")
-        except httpx.HTTPError:
+            payload = response.json()
+            self._auth_mode = (
+                "local" if payload.get("auth_mode") == "local" else "supabase"
+            )
+            if self._auth_mode == "local":
+                self._set_chat_visible(True)
+                self.status.setText("ATLAS conectado · memória local SQLite")
+            else:
+                self.status.setText("ATLAS API conectada · autenticação Supabase")
+        except (httpx.HTTPError, ValueError):
             self.status.setText("ATLAS API: offline. Inicie o backend local.")
 
     def _start_worker(self, worker: ApiWorker, operation: str) -> None:
@@ -188,6 +198,8 @@ class AtlasWindow(QMainWindow):
         worker.start()
 
     def start_auth(self, operation: str) -> None:
+        if self._auth_mode == "local":
+            return
         email = self.email.text().strip()
         password = self.password.text()
         if not email or not password:
@@ -206,7 +218,9 @@ class AtlasWindow(QMainWindow):
 
     def send_message(self) -> None:
         message = self.input.text().strip()
-        if not message or self._worker is not None or not self._access_token:
+        if not message or self._worker is not None:
+            return
+        if self._auth_mode == "supabase" and not self._access_token:
             return
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
         self.input.clear()
@@ -282,10 +296,11 @@ class AtlasWindow(QMainWindow):
 
     def _update_controls(self) -> None:
         busy = self._worker is not None
+        authenticated = self._auth_mode == "local" or bool(self._access_token)
         self.login_button.setEnabled(not busy)
         self.signup_button.setEnabled(not busy)
-        self.send_button.setEnabled(not busy and bool(self._access_token))
-        self.input.setEnabled(not busy and bool(self._access_token))
+        self.send_button.setEnabled(not busy and authenticated)
+        self.input.setEnabled(not busy and authenticated)
 
 
 def main() -> None:

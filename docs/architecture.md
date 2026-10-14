@@ -1,30 +1,27 @@
 # Arquitetura inicial
 
-Fluxo atual: PySide6 desktop → FastAPI local → Supabase Auth para sessão → Gemini para respostas. A API possui endpoints de memória que usam o token autenticado do usuário e dependem de RLS.
+Fluxo padrão: PySide6 desktop → FastAPI local → Gemini para respostas; a memória é persistida em SQLite no computador. A API oferece uma opção de armazenamento Supabase para uma futura fase em nuvem.
 
-A migração versionada está no repositório, mas ainda não foi aplicada a um projeto Supabase real. Leitura/criação/exclusão estão implementadas; persistência real depende da migração e validação no projeto correto.
-
-- Desktop nunca importa SDKs Gemini ou Supabase.
-- Backend mantém as credenciais dos provedores.
-- Cadastro/login/logout passam pelo backend e usam Supabase Auth.
-- `GET /auth/me` valida o bearer token.
-- `POST /chat` exige token válido antes de chamar o Gemini.
-- `GET /memories`, `POST /memories` e `DELETE /memories/{id}` exigem sessão validada.
-- O repositório usa chave publicável/anon e access token do usuário para preservar RLS.
-- O ID do usuário vem da identidade validada, nunca do corpo.
+- Desktop não importa SDKs Gemini ou Supabase.
+- O backend mantém as credenciais do provedor Gemini.
+- `ATLAS_MEMORY_BACKEND=local` é o padrão e dispensa conta remota.
+- `ATLAS_LOCAL_DB_PATH` pode apontar para um arquivo SQLite específico; vazio usa o diretório de dados do usuário.
+- `GET /memories`, `POST /memories` e `DELETE /memories/{id}` usam o adaptador selecionado.
+- Em modo Supabase, a API exige sessão validada e o repositório usa a chave publicável/anon mais o token do usuário para preservar RLS.
+- O ID do usuário remoto vem da identidade validada, nunca do corpo da requisição.
 - Nunca usar `service_role` para contornar RLS.
 - O access token fica apenas na memória do desktop; não há renovação automática.
 - Agente Windows permanece desativado.
 - A recuperação de memórias no contexto do Gemini ainda não está ligada.
-- Testes externos usam HTTPX MockTransport.
+- Testes externos usam HTTPX MockTransport; os testes SQLite usam banco temporário.
 
 ## Sequência
 
 1. Base de interface e chat. **Implementada; validação manual no Windows pendente.**
-2. Migração de memória com RLS. **Versionada, não aplicada ao projeto real.**
-3. Cadastro/login/logout e chat autenticado. **Implementados; validação manual pendente.**
-4. Endpoints de memória com identidade validada. **Implementados; CI e testes simulados pendentes nesta PR.**
-5. Aplicar migração e testar isolamento com duas contas.
-6. Implementar armazenamento seguro/renovação de sessão no Windows.
-7. Recuperar memórias relevantes no contexto do Gemini.
+2. Adaptador de memória local SQLite e modo local-first. **Implementados nesta alteração; CI ainda precisa confirmar.**
+3. Endpoints de memória usando o adaptador selecionado. **Implementados; integração Supabase real pendente.**
+4. Recuperar memórias relevantes no contexto do Gemini.
+5. Validar manualmente no Windows e confirmar persistência após reinício.
+6. Planejar migração/importação de memórias para Supabase quando houver projeto disponível.
+7. Implementar armazenamento seguro/renovação de sessão no Windows.
 8. Planejar protocolo autenticado para ferramentas locais do Windows.

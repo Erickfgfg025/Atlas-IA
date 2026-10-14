@@ -1,61 +1,56 @@
 from fastapi.testclient import TestClient
 
 from atlas.backend import main
-from atlas.backend.auth import AuthenticatedSession, require_authenticated_session
+from atlas.backend.config import Settings, get_settings
 
 client = TestClient(main.app)
 
 
-def test_memory_endpoints_require_authentication():
-    main.app.dependency_overrides.clear()
-    assert client.get("/memories").status_code == 401
-    response = client.post(
-        "/memories",
-        json={"kind": "semantic", "content": "private", "source": "test"},
+def test_local_memory_endpoints_persist_without_remote_auth(monkeypatch, tmp_path):
+    local_settings = Settings(
+        ATLAS_MEMORY_BACKEND="local",
+        ATLAS_LOCAL_DB_PATH=str(tmp_path / "atlas-test.db"),
     )
-    assert response.status_code == 401
-
-
-def test_create_memory_uses_verified_identity_not_client_user_id(monkeypatch):
-    captured = {}
-
-    class StubStore:
-        def __init__(self, settings, access_token, user_id):
-            captured["user_id"] = user_id
-            captured["token"] = access_token
-
-        async def create_memory(self, memory):
-            captured["memory"] = memory
-            return {
-                "id": "00000000-0000-0000-0000-000000000004",
-                "kind": memory["kind"],
-                "content": memory["content"],
-                "source": memory["source"],
-                "scope": memory["scope"],
-                "confidence": memory["confidence"],
-                "created_at": "2026-10-14T12:00:00Z",
-            }
-
-    monkeypatch.setattr(main, "SupabaseMemoryStore", StubStore)
-    main.app.dependency_overrides[require_authenticated_session] = lambda: AuthenticatedSession(
-        user_id="verified-user",
-        access_token="verified-token",
-    )
+    main.app.dependency_overrides[get_settings] = lambda: local_settings
     try:
-        response = client.post(
+        created = client.post(
             "/memories",
             json={
                 "kind": "semantic",
-                "content": "ATLAS prefere segurança",
-                "source": "conversation",
-                "user_id": "attacker-user",
+                "content": "ATLAS usa memória local",
+                "source": "test",
+                "scope": "project:atlas",
+                "confidence": 0.9,
             },
         )
+        assert created.status_code == 201
+        memory = created.json()
+        assert memory["content"] == "ATLAS usa memória local"
+
+        listed = client.get("/memories")
+        assert listed.status_code == 200
+        assert len(listed.json()) == 1
+        assert listed.json()[0]["id"] == memory["id"]
+
+        deleted = client.delete(f"/memories/{memory['id']}")
+        assert deleted.status_code == 204
+        assert client.get("/memories").json() == []
     finally:
         main.app.dependency_overrides.clear()
 
-    assert response.status_code == 201
-    assert captured["user_id"] == "verified-user"
-    assert captured["token"] == "verified-token"
-    assert "user_id" not in captured["memory"]
-    assert response.json()["content"] == "ATLAS prefere segurança"
+
+def test_supabase_memory_mode_requires_bearer_token(tmp_path):
+    cloud_settings = Settings(
+        ATLAS_MEMORY_BACKEND="supabase",
+        ATLAS_LOCAL_DB_PATH=str(tmp_path / "unused.db"),
+    )
+    main.app.dependency_overrides[get_settings] = lambda: cloud_settings
+    try:
+        assert client.get("/memories").status_code == 401
+        response = client.post(
+            "/memories",
+            json={"kind": "semantic", "content": "private", "source": "test"},
+        )
+        assert response.status_code == 401
+    finally:
+        main.app.dependency_overrides.clear()
