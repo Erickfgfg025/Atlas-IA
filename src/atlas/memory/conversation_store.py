@@ -26,6 +26,7 @@ class SQLiteConversationStore:
         connection = sqlite3.connect(self.database_path, timeout=5.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA busy_timeout = 5000")
+        connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
     def _initialize(self) -> None:
@@ -59,7 +60,7 @@ class SQLiteConversationStore:
             )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_atlas_messages_conversation "
-                "ON atlas_conversation_messages(conversation_id, created_at, rowid)"
+                "ON atlas_conversation_messages(conversation_id, created_at)"
             )
             connection.commit()
 
