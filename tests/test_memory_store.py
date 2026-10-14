@@ -139,3 +139,38 @@ def test_memory_store_fails_closed_when_supabase_is_unavailable():
         asyncio.run(run())
     assert error.value.status_code == 403
     assert "row-level security denied" not in error.value.detail
+
+def test_update_memory_filters_by_memory_and_verified_user():
+    memory_id = UUID("00000000-0000-0000-0000-000000000004")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "PATCH"
+        assert request.url.params["id"] == f"eq.{memory_id}"
+        assert request.url.params["user_id"] == "eq.user-123"
+        assert request.headers["authorization"] == "Bearer user-access-token"
+        assert b'"content":"Texto corrigido"' in request.read()
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "id": str(memory_id),
+                    "kind": "semantic",
+                    "content": "Texto corrigido",
+                    "source": "test",
+                    "scope": "user",
+                    "confidence": 1.0,
+                    "created_at": "2026-10-14T12:00:00Z",
+                }
+            ],
+        )
+
+    async def run():
+        store, client = make_store(handler)
+        try:
+            return await store.update_memory(memory_id, {"content": "Texto corrigido"})
+        finally:
+            await client.aclose()
+
+    row = asyncio.run(run())
+    assert row is not None
+    assert row["content"] == "Texto corrigido"
