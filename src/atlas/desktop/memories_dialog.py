@@ -49,6 +49,7 @@ class MemoryDialog(QDialog):
         self.token = token
         self.worker = None
         self.records = {}
+        self._refresh_after_operation = False
         self.setWindowTitle("Memórias do ATLAS")
         self.resize(620, 440)
         self.items = QListWidget()
@@ -135,8 +136,11 @@ class MemoryDialog(QDialog):
             self.status.setText(f"{len(self.records)} memória(s).")
         else:
             self.status.setText("Memória atualizada." if result.get("action") == "update" else "Memória excluída.")
-            self.refresh()
+            self._refresh_after_operation = True
 
     def _finished(self):
         self.worker = None
         self._controls()
+        if self._refresh_after_operation:
+            self._refresh_after_operation = False
+            self.refresh()
