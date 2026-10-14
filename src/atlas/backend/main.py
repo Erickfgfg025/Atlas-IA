@@ -175,18 +175,20 @@ async def auth_me(
     return AuthMeResponse(user_id=user.user_id)
 
 
-def get_conversation_store(app_settings: Settings = Depends(get_settings)) -> SQLiteConversationStore:
-    """Use local SQLite history only in local mode; cloud history is not configured yet."""
+def get_conversation_store(app_settings: Settings = Depends(get_settings)) -> SQLiteConversationStore | None:
+    """Use local SQLite history only in local mode; preserve chat in cloud mode without history."""
     if app_settings.memory_backend != "local":
-        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado. Use o modo local.")
+        return None
     return SQLiteConversationStore(app_settings.local_db_path or None)
 
 
 @app.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
-    store: SQLiteConversationStore = Depends(get_conversation_store),
+    store: SQLiteConversationStore | None = Depends(get_conversation_store),
 ) -> list[ConversationResponse]:
+    if store is None:
+        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     rows = await store.list_conversations(limit=limit)
     return [ConversationResponse.model_validate(row) for row in rows]
 
@@ -194,8 +196,10 @@ async def list_conversations(
 @app.post("/conversations", response_model=ConversationResponse, status_code=201)
 async def create_conversation(
     request: ConversationCreateRequest,
-    store: SQLiteConversationStore = Depends(get_conversation_store),
+    store: SQLiteConversationStore | None = Depends(get_conversation_store),
 ) -> ConversationResponse:
+    if store is None:
+        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     row = await store.create_conversation(request.title)
     return ConversationResponse.model_validate(row)
 
@@ -204,8 +208,10 @@ async def create_conversation(
 async def list_conversation_messages(
     conversation_id: UUID,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    store: SQLiteConversationStore = Depends(get_conversation_store),
+    store: SQLiteConversationStore | None = Depends(get_conversation_store),
 ) -> list[ConversationMessageResponse]:
+    if store is None:
+        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     rows = await store.list_messages(conversation_id, limit=limit)
     return [ConversationMessageResponse.model_validate(row) for row in rows]
 
@@ -213,8 +219,10 @@ async def list_conversation_messages(
 @app.delete("/conversations/{conversation_id}", status_code=204)
 async def delete_conversation(
     conversation_id: UUID,
-    store: SQLiteConversationStore = Depends(get_conversation_store),
+    store: SQLiteConversationStore | None = Depends(get_conversation_store),
 ) -> Response:
+    if store is None:
+        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     deleted = await store.delete_conversation(conversation_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversa não encontrada.")
