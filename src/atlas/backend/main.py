@@ -19,6 +19,7 @@ from atlas.backend.auth_sessions import (
 )
 from atlas.backend.config import Settings, get_settings
 from atlas.memory.contracts import MemoryKind
+from atlas.memory.retrieval import build_memory_augmented_prompt, select_relevant_memories
 from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
@@ -63,27 +64,6 @@ class MemoryResponse(BaseModel):
     scope: str
     confidence: float
     created_at: datetime
-
-
-async def require_chat_access(
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(_bearer),
-    ],
-    app_settings: Annotated[Settings, Depends(get_settings)],
-) -> None:
-    """Local mode is single-user and loopback-only; cloud mode verifies Supabase Auth."""
-    if app_settings.memory_backend == "local":
-        return
-    if app_settings.memory_backend != "supabase":
-        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=401,
-            detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    await verify_supabase_access_token(credentials.credentials, app_settings)
 
 
 async def get_memory_store(
@@ -196,13 +176,28 @@ async def delete_memory(
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    _access: None = Depends(require_chat_access),
+    store: Any = Depends(get_memory_store),
 ) -> ChatResponse:
     try:
+        try:
+            stored_memories = await store.list_memories(limit=100)
+        except HTTPException as exc:
+            if exc.status_code < 500:
+                raise
+            stored_memories = []
+
+        relevant_memories = select_relevant_memories(
+            request.message,
+            stored_memories,
+            limit=5,
+        )
+        prompt = build_memory_augmented_prompt(request.message, relevant_memories)
         provider = GeminiProvider(settings.gemini_api_key, settings.gemini_model)
-        answer = await provider.generate(request.message)
+        answer = await provider.generate(prompt)
     except MissingGeminiConfiguration as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail="O provedor de IA falhou.") from exc
     return ChatResponse(response=answer)
