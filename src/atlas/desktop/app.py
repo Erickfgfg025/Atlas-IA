@@ -288,6 +288,9 @@ class AtlasWindow(QMainWindow):
         self.quick_button = QPushButton("↗  Painel flutuante")
         self.quick_button.clicked.connect(self.open_floating)
         top.addWidget(self.quick_button)
+        self.logout_button = QPushButton("Sair da conta")
+        self.logout_button.clicked.connect(self.logout)
+        top.addWidget(self.logout_button)
         content_layout.addWidget(topbar)
 
         workspace = QHBoxLayout()
@@ -412,9 +415,7 @@ class AtlasWindow(QMainWindow):
         self.auth_panel.setVisible(not visible)
         self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
         self.memory_nav.setVisible(visible)
-        self.logout_button = getattr(self, "logout_button", None)
-        if self.logout_button is not None:
-            self.logout_button.setVisible(visible and self._auth_mode == "supabase")
+        self.logout_button.setVisible(visible and self._auth_mode == "supabase" and bool(self._access_token))
 
     def check_api(self) -> None:
         try:
@@ -564,7 +565,14 @@ class AtlasWindow(QMainWindow):
         self._update_controls()
 
     def _on_failure(self, message: str) -> None:
-        self.status.setText(message)
+        if self._pending_operation == "logout":
+            self._set_chat_visible(False)
+            self.transcript.clear()
+            self.email.clear()
+            self.password.clear()
+            self.status.setText("Sessão local encerrada; o serviço não confirmou o encerramento remoto.")
+        else:
+            self.status.setText(message)
         self.activity_status.setText("A última operação não foi concluída.")
         self._update_controls()
 
