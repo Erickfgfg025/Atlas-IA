@@ -3,25 +3,29 @@
 Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via `google-genai`. O projeto começa com memória local SQLite; Supabase fica como opção futura de autenticação e armazenamento em nuvem.
 
 ## Arquitetura atual
-- `src/atlas/desktop/`: interface nativa, chat e modo local sem cadastro remoto.
-- `src/atlas/backend/`: API e seleção de modo local ou Supabase.
+- `src/atlas/desktop/`: interface nativa, chat e diálogo para revisar/editar/excluir memórias.
+- `src/atlas/backend/`: API, comando explícito para salvar memória e seleção de modo local ou Supabase.
 - `src/atlas/providers/`: adaptador Gemini.
-- `src/atlas/memory/`: armazenamento SQLite/Supabase e seleção determinística de memórias relevantes para o chat.
-- `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras; sem shell arbitrário.
+- `src/atlas/memory/`: armazenamento SQLite/Supabase e seleção determinística de memórias relevantes.
+- `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras.
 - `supabase/migrations/`: migração de memória com RLS, versionada para uso futuro e ainda não aplicada a um projeto real.
 - `tests/`: testes sem credenciais externas.
-- `docs/`: arquitetura, segurança, autenticação e memória.
+
+## Memória
+- O modo local usa SQLite no computador e não exige conta Supabase.
+- Para salvar algo deliberadamente pelo chat, escreva: **“Lembre que meu projeto usa Python e SQLite.”** O ATLAS confirma o salvamento sem chamar o Gemini para esse comando.
+- O botão **Memórias** permite listar, corrigir e excluir registros salvos.
+- No chat normal, o backend seleciona até cinco memórias relacionadas à mensagem e as envia ao Gemini como dados de contexto.
+- A extração é explícita, não automática: o ATLAS não guarda indiscriminadamente cada mensagem.
+- A API implementa `GET /memories`, `POST /memories`, `PUT /memories/{id}` e `DELETE /memories/{id}`.
 
 ## Modos de operação
 - **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
 - **supabase (opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e migração aplicada ao projeto escolhido.
 
-A API implementa `GET /memories`, `POST /memories` e `DELETE /memories/{id}`. No chat, o ATLAS seleciona até cinco memórias com termos relevantes à mensagem e as envia ao Gemini como dados de contexto. O conteúdo de memória é tratado como dado não confiável e limitado para evitar contexto excessivo.
+## Instalação no PowerShell
+Python 3.11, 3.12 ou 3.13. Para conversar, configure `GEMINI_API_KEY` em `.env`.
 
-## Requisitos
-Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface. Para conversar, é necessário configurar `GEMINI_API_KEY`.
-
-## Instalar no PowerShell
 ```powershell
 git clone https://github.com/Erickfgfg025/Atlas-IA.git
 cd Atlas-IA
@@ -32,21 +36,22 @@ pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
 
-Configure `GEMINI_API_KEY` em `.env`. Por padrão, `ATLAS_MEMORY_BACKEND=local`. O arquivo SQLite é criado automaticamente no diretório de dados do usuário. Para escolher outro local, defina `ATLAS_LOCAL_DB_PATH`. Não comite `.env`.
+Por padrão, `ATLAS_MEMORY_BACKEND=local`. O SQLite é criado automaticamente no diretório de dados do usuário. Para escolher outro caminho, defina `ATLAS_LOCAL_DB_PATH`. Não comite `.env`.
 
-Para ativar o modo remoto posteriormente, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use `service_role` ou chave secreta no desktop.
+Para ativar o modo remoto posteriormente, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use a chave `service_role` no desktop.
 
 ## Executar
 Terminal 1:
 ```powershell
 uvicorn atlas.backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
 Terminal 2:
 ```powershell
 python -m atlas.desktop.app
 ```
 
-## Testar
+## Testes
 ```powershell
 pytest
 ruff check .
@@ -54,7 +59,6 @@ ruff check .
 
 ## Limites atuais
 - Nenhum deploy ou migração remota foi executado.
-- Recuperação de memória por sobreposição de termos; ainda não usa embeddings nem memória semântica vetorial.
-- Modo Supabase foi testado com mocks, não com um projeto real.
-- Sem voz ou automação autônoma do Windows.
-- Não exponha a API além de `127.0.0.1` nesta fase.
+- A recuperação usa sobreposição de termos, sem embeddings.
+- O modo Supabase foi testado com mocks, não com um projeto real.
+- Voz e automação do Windows ainda não foram implementadas.

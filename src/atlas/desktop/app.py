@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 from PySide6.QtCore import QThread, Signal
+from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -133,6 +134,8 @@ class AtlasWindow(QMainWindow):
         self.input.setPlaceholderText("Escreva uma mensagem para o ATLAS...")
         self.send_button = QPushButton("Enviar")
         self.logout_button = QPushButton("Sair da conta")
+        self.memories_button = QPushButton("Memórias")
+        self.memories_button.clicked.connect(self.open_memories)
         self.send_button.clicked.connect(self.send_message)
         self.input.returnPressed.connect(self.send_message)
         self.logout_button.clicked.connect(self.logout)
@@ -148,6 +151,7 @@ class AtlasWindow(QMainWindow):
             self.transcript,
             self.input,
             self.send_button,
+            self.memories_button,
             self.logout_button,
         ):
             layout.addWidget(widget)
@@ -160,6 +164,7 @@ class AtlasWindow(QMainWindow):
     def _set_chat_visible(self, visible: bool) -> None:
         for widget in (self.transcript, self.input, self.send_button):
             widget.setVisible(visible)
+        self.memories_button.setVisible(visible)
         self.logout_button.setVisible(visible and self._auth_mode == "supabase")
         for widget in (
             self.auth_title,
@@ -235,6 +240,12 @@ class AtlasWindow(QMainWindow):
             ),
             "chat",
         )
+
+    def open_memories(self) -> None:
+        if self._worker is not None:
+            return
+        dialog = MemoryDialog(self._access_token, self)
+        dialog.exec()
 
     def logout(self) -> None:
         if self._worker is not None or not self._access_token:

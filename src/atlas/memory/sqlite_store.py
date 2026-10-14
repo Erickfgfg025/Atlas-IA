@@ -96,3 +96,24 @@ class SQLiteMemoryStore:
             )
             connection.commit()
         return cursor.rowcount > 0
+
+    async def update_memory(self, memory_id: UUID, memory: dict[str, Any]) -> dict[str, Any] | None:
+        allowed = {"kind", "content", "source", "scope", "confidence"}
+        changes = {key: value for key, value in memory.items() if key in allowed}
+        if not changes:
+            return None
+        assignments = ", ".join(f"{key} = :{key}" for key in changes)
+        changes["id"] = str(memory_id)
+        with closing(self._connect()) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute(
+                f"UPDATE atlas_memories SET {assignments} WHERE id = :id",
+                changes,
+            )
+            connection.commit()
+            row = connection.execute(
+                "SELECT id, kind, content, source, scope, confidence, created_at "
+                "FROM atlas_memories WHERE id = ?",
+                (str(memory_id),),
+            ).fetchone()
+        return dict(row) if row else None

@@ -152,3 +152,27 @@ class SupabaseMemoryStore:
         except ValueError:
             rows = []
         return isinstance(rows, list) and bool(rows)
+
+    async def update_memory(
+        self, memory_id: UUID, memory: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        allowed = {"kind", "content", "source", "scope", "confidence"}
+        payload = {key: value for key, value in memory.items() if key in allowed}
+        if not payload:
+            return None
+        response = await self._request(
+            "PATCH",
+            params={
+                "id": f"eq.{memory_id}",
+                "user_id": f"eq.{self.user_id}",
+                "select": "id,kind,content,source,scope,confidence,created_at",
+            },
+            payload=payload,
+            prefer="return=representation",
+        )
+        try:
+            rows = response.json()
+        except ValueError:
+            rows = []
+        row = rows[0] if isinstance(rows, list) and rows else None
+        return row if isinstance(row, dict) else None

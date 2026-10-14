@@ -37,3 +37,20 @@ def test_sqlite_store_delete_only_existing_memory(tmp_path):
     memory_id = UUID(created["id"])
     assert asyncio.run(store.delete_memory(memory_id)) is True
     assert asyncio.run(store.delete_memory(memory_id)) is False
+
+
+def test_sqlite_store_updates_memory_content(tmp_path):
+    store = SQLiteMemoryStore(tmp_path / "atlas.db")
+    created = asyncio.run(
+        store.create_memory(
+            {"kind": "semantic", "content": "Versão antiga", "source": "test"}
+        )
+    )
+
+    updated = asyncio.run(
+        store.update_memory(UUID(created["id"]), {"content": "Versão corrigida"})
+    )
+
+    assert updated is not None
+    assert updated["content"] == "Versão corrigida"
+    assert asyncio.run(store.update_memory(UUID("00000000-0000-0000-0000-000000000099"), {"content": "não existe"})) is None
