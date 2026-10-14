@@ -1,21 +1,21 @@
 # ATLAS AI
 
-Assistente pessoal para Windows 10/11. Base em Python com PySide6, FastAPI, Gemini via SDK oficial `google-genai` e Supabase Auth.
+Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI, Gemini via `google-genai` e Supabase Auth.
 
 ## Arquitetura atual
-- `src/atlas/desktop/`: interface PySide6 com cadastro, login, chat autenticado e logout.
-- `src/atlas/backend/`: API FastAPI, configuração e autenticação.
+- `src/atlas/desktop/`: interface com cadastro, login, chat autenticado e logout.
+- `src/atlas/backend/`: API, configuração e autenticação.
 - `src/atlas/providers/`: adaptadores Gemini e Supabase.
-- `src/atlas/memory/`: contrato tipado inicial de memória; persistência ainda não conectada.
-- `src/atlas/windows_agent/`: fronteira reservada para ferramentas locais seguras; nada de shell arbitrário.
-- `supabase/migrations/`: migração versionada para memória com RLS, ainda não aplicada a um projeto real.
+- `src/atlas/memory/`: contratos e repositório Supabase usando o token do usuário.
+- `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras; sem shell arbitrário.
+- `supabase/migrations/`: migração de memória com RLS, ainda não aplicada a um projeto real.
 - `tests/`: testes sem credenciais externas.
-- `docs/`: arquitetura, segurança, autenticação, ADRs e marcos seguintes.
+- `docs/`: arquitetura, segurança, autenticação e memória.
 
-Fluxo: desktop → API local → Supabase Auth para sessão e Gemini para respostas. O endpoint de chat exige token válido. A memória persistente e o agente local ainda não estão ativados.
+A API implementa `GET /memories`, `POST /memories` e `DELETE /memories/{id}`. A persistência real depende de aplicar a migração ao projeto Supabase correto. A recuperação automática de memórias no contexto do Gemini ainda não está ativada.
 
 ## Requisitos
-Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface desktop. É necessário um projeto Supabase configurado com Email Auth e uma chave Gemini para conversar com o modelo.
+Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface. Para conversar, é necessário um projeto Supabase com Email Auth e uma chave Gemini.
 
 ## Instalar no PowerShell
 ```powershell
@@ -28,25 +28,19 @@ pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
 
-Edite `.env` localmente:
-- `GEMINI_API_KEY`: sua chave da API Gemini.
-- `SUPABASE_URL`: URL do projeto Supabase.
-- `SUPABASE_KEY`: chave publicável/anon do projeto. **Nunca use `service_role` ou uma chave secreta.**
-
-No Supabase, habilite Email Auth. Se a confirmação de e-mail estiver ativa, confirme o endereço antes de entrar. Não faça commit do `.env`.
+Configure localmente `GEMINI_API_KEY`, `SUPABASE_URL` e `SUPABASE_KEY`. Use a chave publicável/anon do Supabase, nunca `service_role` ou chave secreta. Não comite `.env`. Habilite Email Auth e confirme o endereço se o projeto exigir.
 
 ## Executar
 Terminal 1:
 ```powershell
 uvicorn atlas.backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
-
 Terminal 2:
 ```powershell
 python -m atlas.desktop.app
 ```
 
-Crie uma conta ou entre pela janela do ATLAS. O access token fica apenas na memória do processo e é apagado ao sair ou fechar o aplicativo. Não há login automático nesta versão.
+O access token fica apenas na memória do processo. Não há login automático nesta versão.
 
 ## Testar
 ```powershell
@@ -54,11 +48,11 @@ pytest
 ruff check .
 ```
 
-Os testes unitários não precisam de chaves e não chamam serviços externos. O CI executa lint e testes automatizados; ainda é necessário fazer uma validação manual no Windows com as credenciais locais.
+Testes simulados verificam autenticação e uso do token/ID correto para operações de memória. Depois de aplicar a migração, valide a integração real com duas contas de teste.
 
-## Limites desta etapa
+## Limites
 - Nenhum deploy ou migração remota foi executado.
-- A migração `atlas_memories` está versionada, mas não aplicada ao projeto Supabase.
-- Sem memória persistente funcional, voz ou automação autônoma do Windows.
+- A memória ainda não está disponível até aplicar a migração e verificar o projeto.
+- Memórias ainda não são recuperadas automaticamente pelo Gemini.
+- Sem voz ou automação autônoma do Windows.
 - Não exponha a API além de `127.0.0.1` nesta fase.
-- Nenhuma chave privilegiada deve ser embutida no desktop.

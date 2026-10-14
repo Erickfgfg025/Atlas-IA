@@ -1,10 +1,17 @@
+from datetime import datetime
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
-from atlas.backend.auth import AuthenticatedUser, require_authenticated_user
+from atlas.backend.auth import (
+    AuthenticatedSession,
+    AuthenticatedUser,
+    require_authenticated_session,
+    require_authenticated_user,
+)
 from atlas.backend.auth_sessions import (
     PasswordCredentials,
     sign_in_with_password,
@@ -12,6 +19,8 @@ from atlas.backend.auth_sessions import (
     sign_up_with_password,
 )
 from atlas.backend.config import get_settings
+from atlas.memory.contracts import MemoryKind
+from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
 
 settings = get_settings()
@@ -36,6 +45,24 @@ class AuthSessionResponse(BaseModel):
     expires_in: int | None = None
     user_id: str | None = None
     confirmation_required: bool = False
+
+
+class MemoryCreateRequest(BaseModel):
+    kind: MemoryKind
+    content: str = Field(min_length=1, max_length=12000)
+    source: str = Field(min_length=1, max_length=200)
+    scope: str = Field(default="user", min_length=1, max_length=200)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class MemoryResponse(BaseModel):
+    id: UUID
+    kind: MemoryKind
+    content: str
+    source: str
+    scope: str
+    confidence: float
+    created_at: datetime
 
 
 @app.get("/health")
@@ -82,6 +109,38 @@ async def auth_me(
 ) -> AuthMeResponse:
     """Return the identity verified by Supabase Auth."""
     return AuthMeResponse(user_id=user.user_id)
+
+
+@app.get("/memories", response_model=list[MemoryResponse])
+async def list_memories(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    session: AuthenticatedSession = Depends(require_authenticated_session),
+) -> list[MemoryResponse]:
+    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
+    rows = await store.list_memories(limit=limit)
+    return [MemoryResponse.model_validate(row) for row in rows]
+
+
+@app.post("/memories", response_model=MemoryResponse, status_code=201)
+async def create_memory(
+    memory: MemoryCreateRequest,
+    session: AuthenticatedSession = Depends(require_authenticated_session),
+) -> MemoryResponse:
+    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
+    row = await store.create_memory(memory.model_dump(mode="json"))
+    return MemoryResponse.model_validate(row)
+
+
+@app.delete("/memories/{memory_id}", status_code=204)
+async def delete_memory(
+    memory_id: UUID,
+    session: AuthenticatedSession = Depends(require_authenticated_session),
+) -> Response:
+    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
+    deleted = await store.delete_memory(memory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Memória não encontrada.")
+    return Response(status_code=204)
 
 
 @app.post("/chat", response_model=ChatResponse)

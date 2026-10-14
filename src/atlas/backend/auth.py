@@ -20,6 +20,12 @@ class AuthenticatedUser(BaseModel):
     user_id: str
 
 
+class AuthenticatedSession(AuthenticatedUser):
+    """Verified user identity plus the bearer token for RLS-enforced data access."""
+
+    access_token: str
+
+
 async def verify_supabase_access_token(
     token: str,
     settings: Settings,
@@ -99,3 +105,20 @@ async def require_authenticated_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return await verify_supabase_access_token(credentials.credentials, settings)
+
+
+async def require_authenticated_session(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(_bearer),
+    ],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AuthenticatedSession:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await verify_supabase_access_token(credentials.credentials, settings)
+    return AuthenticatedSession(user_id=user.user_id, access_token=credentials.credentials)
