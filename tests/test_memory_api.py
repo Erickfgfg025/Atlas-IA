@@ -63,8 +63,6 @@ def test_supabase_memory_mode_requires_bearer_token(tmp_path):
         main.app.dependency_overrides.clear()
 
 def test_explicit_remember_command_persists_memory_without_calling_gemini(tmp_path, monkeypatch):
-    from atlas.backend.main import get_memory_store
-
     local_settings = Settings(
         ATLAS_MEMORY_BACKEND="local",
         ATLAS_LOCAL_DB_PATH=str(tmp_path / "remember-test.db"),
