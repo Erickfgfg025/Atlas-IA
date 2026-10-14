@@ -49,12 +49,9 @@ class ApiWorker(QThread):
 
     def run(self) -> None:
         try:
-            if self.operation == "history":
-                if isinstance(payload, list):
-                    self.succeeded.emit({"operation": "history", "messages": payload})
-                else:
-                    self.failed.emit("O histórico retornou uma resposta inválida.")
-            elif self.operation in ("login", "signup"):                response = httpx.post(
+            headers = {"Authorization": f"Bearer {self.access_token}"} if self.access_token else {}
+            if self.operation in ("login", "signup"):
+                response = httpx.post(
                     f"{API_BASE}/auth/{self.operation}",
                     json={"email": self.email, "password": self.password},
                     timeout=15.0,
@@ -62,15 +59,10 @@ class ApiWorker(QThread):
             elif self.operation == "history":
                 response = httpx.get(
                     f"{API_BASE}/conversations/{self.conversation_id}/messages",
-                    headers=({"Authorization": f"Bearer {self.access_token}"} if self.access_token else {}),
+                    headers=headers,
                     timeout=10.0,
                 )
             elif self.operation == "chat":
-                headers = (
-                    {"Authorization": f"Bearer {self.access_token}"}
-                    if self.access_token
-                    else {}
-                )
                 response = httpx.post(
                     f"{API_BASE}/chat",
                     json={"message": self.message, "conversation_id": self.conversation_id or None},
@@ -78,11 +70,7 @@ class ApiWorker(QThread):
                     timeout=60.0,
                 )
             elif self.operation == "logout":
-                response = httpx.post(
-                    f"{API_BASE}/auth/logout",
-                    headers={"Authorization": f"Bearer {self.access_token}"},
-                    timeout=8.0,
-                )
+                response = httpx.post(f"{API_BASE}/auth/logout", headers=headers, timeout=8.0)
                 if response.status_code == 204:
                     self.succeeded.emit({"operation": "logout"})
                     return
@@ -96,16 +84,20 @@ class ApiWorker(QThread):
                 payload = {}
 
             if not response.is_success:
-                detail = payload.get("detail", "A solicitação falhou.")
+                detail = payload.get("detail", "A solicitação falhou.") if isinstance(payload, dict) else "A solicitação falhou."
                 self.failed.emit(str(detail))
                 return
-
             if self.operation in ("login", "signup"):
                 if not isinstance(payload, dict):
                     self.failed.emit("Resposta de autenticação inválida.")
                     return
                 self.succeeded.emit({"operation": self.operation, **payload})
-            else:
+            elif self.operation == "history":
+                if isinstance(payload, list):
+                    self.succeeded.emit({"operation": "history", "messages": payload})
+                else:
+                    self.failed.emit("O histórico retornou uma resposta inválida.")
+            elif self.operation == "chat":
                 answer = payload.get("response") if isinstance(payload, dict) else None
                 if not isinstance(answer, str) or not answer.strip():
                     self.failed.emit("A API retornou uma resposta inválida.")
