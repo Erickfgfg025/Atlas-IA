@@ -1,16 +1,16 @@
-# Verificação de sessão Supabase
+# Autenticação Supabase
 
-## O que existe
+## Implementado nesta etapa
 
-O endpoint `GET /auth/me` recebe `Authorization: Bearer <access_token>` e consulta `/auth/v1/user` do projeto Supabase configurado. O ID retornado é derivado da resposta de Auth, nunca de um `user_id` fornecido no corpo da requisição.
+A interface desktop possui fluxo de cadastro, login, chat autenticado e logout. O backend expõe:
 
-Respostas esperadas:
+- `POST /auth/signup`: cria uma conta usando e-mail e senha.
+- `POST /auth/login`: autentica uma conta existente.
+- `GET /auth/me`: valida o bearer token com Supabase Auth e retorna o ID validado.
+- `POST /auth/logout`: solicita ao Supabase o encerramento da sessão.
+- `POST /chat`: exige um bearer token válido antes de chamar o Gemini.
 
-- `200`: token válido, com `user_id`.
-- `401`: token ausente, inválido ou expirado.
-- `503`: configuração ausente, indisponibilidade de Auth ou resposta inválida do serviço.
-
-O cliente HTTP usa timeout de 5 segundos. Erros upstream não incluem o token nem o corpo privado da resposta nas mensagens públicas.
+O backend usa a chave publicável/anon configurada em `SUPABASE_KEY`. Nunca use `service_role` ou uma chave secreta nesse fluxo. A senha é encaminhada do backend para o endpoint oficial de Auth, sem ser registrada em logs. A resposta da API desktop não inclui refresh token.
 
 ## Configuração local
 
@@ -19,23 +19,30 @@ No arquivo `.env` do backend:
 ```dotenv
 SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
 SUPABASE_KEY=SUA_CHAVE_PUBLICAVEL_OU_ANON
+GEMINI_API_KEY=SUA_CHAVE_GEMINI
 ```
 
-Use a chave publicável/anon do projeto para esse fluxo. Nunca use `service_role` ou uma chave secreta. Não comite o arquivo `.env`.
+Não comite o arquivo `.env`. No Supabase, habilite Email Auth. Se a confirmação de e-mail estiver habilitada, o cadastro pode exigir confirmação antes do primeiro login.
+
+## Sessão e armazenamento
+
+Nesta versão, o access token fica apenas na memória do processo desktop e é apagado ao sair da conta ou fechar o aplicativo. Não há login automático após reiniciar o aplicativo. Isso é intencional até implementar armazenamento seguro usando Windows Credential Manager e fluxo de renovação de sessão.
 
 ## Testes
 
-Os testes usam `httpx.MockTransport` e não chamam Supabase real:
+Os testes de autenticação usam `httpx.MockTransport`; não chamam Supabase real:
 
 ```powershell
-pytest tests/test_auth.py
+pytest tests/test_auth.py tests/test_auth_sessions.py
+pytest
+ruff check .
 ```
 
 ## Limites atuais
 
-- A interface desktop ainda não oferece login.
-- O endpoint `/chat` continua sem autenticação por compatibilidade com a interface atual.
-- A migração `atlas_memories` foi versionada no repositório, mas ainda não foi aplicada a um projeto Supabase.
+- A API local e o fluxo de login ainda precisam ser executados manualmente no Windows com um projeto Supabase configurado.
+- A migração `atlas_memories` está no GitHub, mas não foi aplicada a um projeto Supabase.
 - Nenhuma memória é gravada ou recuperada ainda.
+- O agente local Windows, voz, armazenamento seguro de sessão e hospedagem na nuvem ainda não estão implementados.
 
-Próxima etapa: implementar login/logout na interface desktop, manter tokens de sessão fora do código-fonte e proteger endpoints pessoais antes de integrar o repositório de memórias.
+Próxima etapa: conectar o repositório de memória à identidade validada, usando o access token do usuário para que o RLS continue aplicando o isolamento por linha.

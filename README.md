@@ -1,20 +1,21 @@
 # ATLAS AI
 
-Assistente pessoal para Windows 10/11. Base inicial em Python com PySide6, FastAPI, Gemini via SDK oficial `google-genai` e integração preparada para Supabase.
+Assistente pessoal para Windows 10/11. Base em Python com PySide6, FastAPI, Gemini via SDK oficial `google-genai` e Supabase Auth.
 
-## Arquitetura inicial
-- `src/atlas/desktop/`: interface PySide6, cliente HTTP da API.
-- `src/atlas/backend/`: API FastAPI e configuração.
+## Arquitetura atual
+- `src/atlas/desktop/`: interface PySide6 com cadastro, login, chat autenticado e logout.
+- `src/atlas/backend/`: API FastAPI, configuração e autenticação.
 - `src/atlas/providers/`: adaptadores Gemini e Supabase.
-- `src/atlas/memory/`: contrato tipado inicial de memória, sem persistência automática ainda.
+- `src/atlas/memory/`: contrato tipado inicial de memória; persistência ainda não conectada.
 - `src/atlas/windows_agent/`: fronteira reservada para ferramentas locais seguras; nada de shell arbitrário.
+- `supabase/migrations/`: migração versionada para memória com RLS, ainda não aplicada a um projeto real.
 - `tests/`: testes sem credenciais externas.
-- `docs/`: arquitetura, segurança, ADRs e próximo marco.
+- `docs/`: arquitetura, segurança, autenticação, ADRs e marcos seguintes.
 
-Fluxo: desktop → API local → Gemini. Supabase está preparado como adaptador, mas a persistência só será ativada após migrações, autenticação e RLS revisadas.
+Fluxo: desktop → API local → Supabase Auth para sessão e Gemini para respostas. O endpoint de chat exige token válido. A memória persistente e o agente local ainda não estão ativados.
 
 ## Requisitos
-Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface desktop.
+Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface desktop. É necessário um projeto Supabase configurado com Email Auth e uma chave Gemini para conversar com o modelo.
 
 ## Instalar no PowerShell
 ```powershell
@@ -26,27 +27,38 @@ python -m pip install --upgrade pip
 pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
-Edite `.env` localmente. Nunca faça commit desse arquivo.
+
+Edite `.env` localmente:
+- `GEMINI_API_KEY`: sua chave da API Gemini.
+- `SUPABASE_URL`: URL do projeto Supabase.
+- `SUPABASE_KEY`: chave publicável/anon do projeto. **Nunca use `service_role` ou uma chave secreta.**
+
+No Supabase, habilite Email Auth. Se a confirmação de e-mail estiver ativa, confirme o endereço antes de entrar. Não faça commit do `.env`.
 
 ## Executar
 Terminal 1:
 ```powershell
 uvicorn atlas.backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
 Terminal 2:
 ```powershell
 python -m atlas.desktop.app
 ```
+
+Crie uma conta ou entre pela janela do ATLAS. O access token fica apenas na memória do processo e é apagado ao sair ou fechar o aplicativo. Não há login automático nesta versão.
 
 ## Testar
 ```powershell
 pytest
 ruff check .
 ```
-Os testes unitários não precisam de chaves nem chamam serviços externos. Testes reais de Gemini/Supabase serão adicionados quando os contratos de integração estiverem definidos.
 
-## Limites desta base
-- Sem deploy ou migração remota.
-- Sem automação autônoma do Windows, voz ou memória persistente de produção.
+Os testes unitários não precisam de chaves e não chamam serviços externos. O CI executa lint e testes automatizados; ainda é necessário fazer uma validação manual no Windows com as credenciais locais.
+
+## Limites desta etapa
+- Nenhum deploy ou migração remota foi executado.
+- A migração `atlas_memories` está versionada, mas não aplicada ao projeto Supabase.
+- Sem memória persistente funcional, voz ou automação autônoma do Windows.
 - Não exponha a API além de `127.0.0.1` nesta fase.
-- Chaves Gemini/Supabase ficam apenas no ambiente do backend. Nunca embuta `service_role` em builds desktop.
+- Nenhuma chave privilegiada deve ser embutida no desktop.
