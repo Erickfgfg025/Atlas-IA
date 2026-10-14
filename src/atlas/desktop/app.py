@@ -148,6 +148,8 @@ class AtlasWindow(QMainWindow):
         self.send_button = QPushButton("Enviar")
         self.logout_button = QPushButton("Sair da conta")
         self.memories_button = QPushButton("Memórias")
+        self.new_conversation_button = QPushButton("Nova conversa")
+        self.new_conversation_button.clicked.connect(self.new_conversation)
         self.memories_button.clicked.connect(self.open_memories)
         self.send_button.clicked.connect(self.send_message)
         self.input.returnPressed.connect(self.send_message)
@@ -165,6 +167,7 @@ class AtlasWindow(QMainWindow):
             self.input,
             self.send_button,
             self.memories_button,
+            self.new_conversation_button,
             self.logout_button,
         ):
             layout.addWidget(widget)
@@ -178,6 +181,7 @@ class AtlasWindow(QMainWindow):
         for widget in (self.transcript, self.input, self.send_button):
             widget.setVisible(visible)
         self.memories_button.setVisible(visible)
+        self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
         self.logout_button.setVisible(visible and self._auth_mode == "supabase")
         for widget in (
             self.auth_title,
@@ -256,6 +260,11 @@ class AtlasWindow(QMainWindow):
             ),
             "chat",
         )
+
+    def new_conversation(self) -> None:
+        if self._worker is not None or self._auth_mode != "local":
+            return
+        self._start_worker(ApiWorker("new_conversation", parent=self), "new_conversation")
 
     def _load_history(self) -> None:
         if self._worker is not None or not self._conversation_id or self._auth_mode != "local":
