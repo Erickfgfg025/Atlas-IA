@@ -7,9 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from atlas.backend.auth import (
-    AuthenticatedSession,
     AuthenticatedUser,
-    require_authenticated_session,
     require_authenticated_user,
     verify_supabase_access_token,
 )
