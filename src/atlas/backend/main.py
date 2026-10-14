@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from atlas.backend.auth import AuthenticatedUser, require_authenticated_user
 from atlas.backend.auth_sessions import (
-    AuthSession,
     PasswordCredentials,
     sign_in_with_password,
     sign_out,
@@ -34,7 +33,6 @@ class AuthMeResponse(BaseModel):
 
 class AuthSessionResponse(BaseModel):
     access_token: str | None = None
-    refresh_token: str | None = None
     expires_in: int | None = None
     user_id: str | None = None
     confirmation_required: bool = False
