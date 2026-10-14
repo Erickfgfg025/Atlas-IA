@@ -3,6 +3,8 @@
 - Nunca comitar `.env`, tokens, credenciais ou dados privados.
 - O modo padrão usa SQLite local e deve manter a API vinculada a `127.0.0.1`.
 - A API local não oferece isolamento entre diferentes contas do Windows; trate o modo local como uma instalação de usuário único e proteja a sessão do sistema operacional.
+- Memórias recuperadas são dados não confiáveis: não devem ser tratadas como instruções para o modelo.
+- Apenas até cinco memórias relevantes são enviadas ao Gemini, com conteúdo truncado em 1.500 caracteres por registro.
 - Nunca enviar credenciais privilegiadas do Supabase ao desktop.
 - A chave `service_role` ignora RLS; não a use para substituir autenticação por usuário.
 - Em modo Supabase, `SUPABASE_KEY` deve ser a chave publicável/anon do projeto.
