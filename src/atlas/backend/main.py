@@ -308,7 +308,9 @@ async def chat(
                     "confidence": 1.0,
                 }
             )
-            return ChatResponse(response=f"Memória salva: {row['content']}")
+            confirmation = "Memória salva: " + row["content"]
+            await conversations.add_message(conversation_id, "assistant", confirmation)
+            return ChatResponse(response=confirmation, conversation_id=conversation_id)
     try:
         try:
             stored_memories = await store.list_memories(limit=100)
