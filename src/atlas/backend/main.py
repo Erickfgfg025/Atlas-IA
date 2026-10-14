@@ -19,6 +19,7 @@ from atlas.backend.auth_sessions import (
 )
 from atlas.backend.config import Settings, get_settings
 from atlas.memory.contracts import MemoryKind
+from atlas.memory.conversation_store import SQLiteConversationStore
 from atlas.memory.retrieval import build_memory_augmented_prompt, select_relevant_memories
 from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
@@ -31,10 +32,32 @@ _bearer = HTTPBearer(auto_error=False)
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
+    conversation_id: UUID | None = None
+
+
+class ConversationCreateRequest(BaseModel):
+    title: str = Field(default="Nova conversa", min_length=1, max_length=160)
+
+
+class ConversationResponse(BaseModel):
+    id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    last_message: str | None = None
+
+
+class ConversationMessageResponse(BaseModel):
+    id: UUID
+    conversation_id: UUID
+    role: str
+    content: str
+    created_at: datetime
 
 
 class ChatResponse(BaseModel):
     response: str
+    conversation_id: UUID | None = None
 
 
 class AuthMeResponse(BaseModel):
@@ -151,6 +174,51 @@ async def auth_me(
     """Return the identity verified by Supabase Auth."""
     return AuthMeResponse(user_id=user.user_id)
 
+
+def get_conversation_store(app_settings: Settings = Depends(get_settings)) -> SQLiteConversationStore:
+    """Use local SQLite history only in local mode; cloud history is not configured yet."""
+    if app_settings.memory_backend != "local":
+        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado. Use o modo local.")
+    return SQLiteConversationStore(app_settings.local_db_path or None)
+
+
+@app.get("/conversations", response_model=list[ConversationResponse])
+async def list_conversations(
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    store: SQLiteConversationStore = Depends(get_conversation_store),
+) -> list[ConversationResponse]:
+    rows = await store.list_conversations(limit=limit)
+    return [ConversationResponse.model_validate(row) for row in rows]
+
+
+@app.post("/conversations", response_model=ConversationResponse, status_code=201)
+async def create_conversation(
+    request: ConversationCreateRequest,
+    store: SQLiteConversationStore = Depends(get_conversation_store),
+) -> ConversationResponse:
+    row = await store.create_conversation(request.title)
+    return ConversationResponse.model_validate(row)
+
+
+@app.get("/conversations/{conversation_id}/messages", response_model=list[ConversationMessageResponse])
+async def list_conversation_messages(
+    conversation_id: UUID,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    store: SQLiteConversationStore = Depends(get_conversation_store),
+) -> list[ConversationMessageResponse]:
+    rows = await store.list_messages(conversation_id, limit=limit)
+    return [ConversationMessageResponse.model_validate(row) for row in rows]
+
+
+@app.delete("/conversations/{conversation_id}", status_code=204)
+async def delete_conversation(
+    conversation_id: UUID,
+    store: SQLiteConversationStore = Depends(get_conversation_store),
+) -> Response:
+    deleted = await store.delete_conversation(conversation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada.")
+    return Response(status_code=204)
 
 @app.get("/memories", response_model=list[MemoryResponse])
 async def list_memories(
