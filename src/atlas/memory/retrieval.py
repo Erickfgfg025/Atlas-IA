@@ -73,7 +73,7 @@ def build_memory_augmented_prompt(
     memory_data = [
         {
             "kind": memory.get("kind", "unknown"),
-            "content": memory.get("content", ""),
+            "content": str(memory.get("content", ""))[:1500],
             "scope": memory.get("scope", "user"),
             "confidence": memory.get("confidence", 1.0),
         }
