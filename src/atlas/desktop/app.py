@@ -56,6 +56,8 @@ class ApiWorker(QThread):
                     json={"email": self.email, "password": self.password},
                     timeout=15.0,
                 )
+            elif self.operation == "new_conversation":
+                response = httpx.post(f"{API_BASE}/conversations", json={"title": "Nova conversa"}, headers=headers, timeout=10.0)
             elif self.operation == "history":
                 response = httpx.get(
                     f"{API_BASE}/conversations/{self.conversation_id}/messages",
