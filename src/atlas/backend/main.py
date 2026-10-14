@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from atlas.backend.auth import AuthenticatedUser, require_authenticated_user
 from atlas.backend.config import get_settings
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
 
@@ -16,9 +17,21 @@ class ChatResponse(BaseModel):
     response: str
 
 
+class AuthMeResponse(BaseModel):
+    user_id: str
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "atlas-api", "environment": settings.environment}
+
+
+@app.get("/auth/me", response_model=AuthMeResponse)
+async def auth_me(
+    user: AuthenticatedUser = Depends(require_authenticated_user),
+) -> AuthMeResponse:
+    """Return the identity verified by Supabase Auth."""
+    return AuthMeResponse(user_id=user.user_id)
 
 
 @app.post("/chat", response_model=ChatResponse)
