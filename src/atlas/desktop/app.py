@@ -252,9 +252,18 @@ class AtlasWindow(QMainWindow):
                 "chat",
                 message=message,
                 access_token=self._access_token,
+                conversation_id=self._conversation_id,
                 parent=self,
             ),
             "chat",
+        )
+
+    def _load_history(self) -> None:
+        if self._worker is not None or not self._conversation_id or self._auth_mode != "local":
+            return
+        self._start_worker(
+            ApiWorker("history", conversation_id=self._conversation_id, parent=self),
+            "history",
         )
 
     def open_memories(self) -> None:
@@ -292,8 +301,23 @@ class AtlasWindow(QMainWindow):
                 )
             else:
                 self.status.setText("A autenticação não retornou uma sessão válida.")
+        elif operation == "history":
+            self.transcript.clear()
+            for message in result.get("messages", []):
+                if not isinstance(message, dict):
+                    continue
+                role = message.get("role")
+                content = message.get("content")
+                if role in ("user", "assistant") and isinstance(content, str):
+                    label = "Você" if role == "user" else "ATLAS"
+                    self.transcript.append(f"<b>{label}:</b> {_safe_html(content)}")
+            self.status.setText("Histórico da conversa restaurado.")
         elif operation == "chat":
             answer = result.get("response")
+            conversation_id = result.get("conversation_id")
+            if isinstance(conversation_id, str) and conversation_id:
+                self._conversation_id = conversation_id
+                self._settings.setValue("active_conversation_id", conversation_id)
             if isinstance(answer, str):
                 self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
         elif operation == "logout":
