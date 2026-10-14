@@ -1,5 +1,6 @@
 import html
 import sys
+from typing import Any
 
 import httpx
 from PySide6.QtCore import QThread, Signal
@@ -14,104 +15,277 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+API_BASE = "http://127.0.0.1:8000"
+
 
 def _safe_html(text: str) -> str:
     """Escape untrusted chat content before displaying it in QTextEdit."""
     return html.escape(text).replace("\n", "<br>")
 
 
-class ChatWorker(QThread):
-    response_received = Signal(str)
+class ApiWorker(QThread):
+    succeeded = Signal(object)
+    failed = Signal(str)
 
-    def __init__(self, message: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        operation: str,
+        *,
+        email: str = "",
+        password: str = "",
+        message: str = "",
+        access_token: str = "",
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
+        self.operation = operation
+        self.email = email
+        self.password = password
         self.message = message
+        self.access_token = access_token
 
     def run(self) -> None:
         try:
-            response = httpx.post(
-                "http://127.0.0.1:8000/chat",
-                json={"message": self.message},
-                timeout=60.0,
-            )
-            if response.is_success:
+            if self.operation in ("login", "signup"):
+                response = httpx.post(
+                    f"{API_BASE}/auth/{self.operation}",
+                    json={"email": self.email, "password": self.password},
+                    timeout=15.0,
+                )
+            elif self.operation == "chat":
+                response = httpx.post(
+                    f"{API_BASE}/chat",
+                    json={"message": self.message},
+                    headers={"Authorization": f"Bearer {self.access_token}"},
+                    timeout=60.0,
+                )
+            elif self.operation == "logout":
+                response = httpx.post(
+                    f"{API_BASE}/auth/logout",
+                    headers={"Authorization": f"Bearer {self.access_token}"},
+                    timeout=8.0,
+                )
+                if response.status_code == 204:
+                    self.succeeded.emit({"operation": "logout"})
+                    return
+            else:
+                self.failed.emit("Operação desconhecida.")
+                return
+
+            try:
                 payload = response.json()
+            except ValueError:
+                payload = {}
+
+            if not response.is_success:
+                detail = payload.get("detail", "A solicitação falhou.")
+                self.failed.emit(str(detail))
+                return
+
+            if self.operation in ("login", "signup"):
+                if not isinstance(payload, dict):
+                    self.failed.emit("Resposta de autenticação inválida.")
+                    return
+                self.succeeded.emit({"operation": self.operation, **payload})
+            else:
                 answer = payload.get("response") if isinstance(payload, dict) else None
                 if not isinstance(answer, str) or not answer.strip():
-                    answer = "A API retornou uma resposta inválida."
-            else:
-                try:
-                    payload = response.json()
-                    detail = payload.get("detail", "Falha na API.")
-                except ValueError:
-                    detail = "Falha na API."
-                answer = f"Erro: {detail}"
+                    self.failed.emit("A API retornou uma resposta inválida.")
+                    return
+                self.succeeded.emit({"operation": "chat", "response": answer})
         except httpx.HTTPError:
-            answer = "Não foi possível conectar à API local."
-        except ValueError:
-            answer = "A API retornou uma resposta inválida."
-
-        self.response_received.emit(answer)
+            self.failed.emit("Não foi possível conectar à API local.")
+        except (TypeError, ValueError):
+            self.failed.emit("A API retornou uma resposta inválida.")
 
 
 class AtlasWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self._chat_worker: ChatWorker | None = None
+        self._access_token = ""
+        self._worker: ApiWorker | None = None
+        self._pending_operation = ""
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
         self.setMinimumSize(600, 420)
+
         self.status = QLabel("ATLAS API: verificando...")
+        self.auth_title = QLabel("Entre na sua conta ATLAS")
+        self.email = QLineEdit()
+        self.email.setPlaceholderText("E-mail")
+        self.password = QLineEdit()
+        self.password.setPlaceholderText("Senha (mínimo 8 caracteres)")
+        self.password.setEchoMode(QLineEdit.Password)
+        self.login_button = QPushButton("Entrar")
+        self.signup_button = QPushButton("Criar conta")
+        self.login_button.clicked.connect(lambda: self.start_auth("login"))
+        self.signup_button.clicked.connect(lambda: self.start_auth("signup"))
+
         self.transcript = QTextEdit()
         self.transcript.setReadOnly(True)
         self.input = QLineEdit()
         self.input.setPlaceholderText("Escreva uma mensagem para o ATLAS...")
         self.send_button = QPushButton("Enviar")
+        self.logout_button = QPushButton("Sair da conta")
         self.send_button.clicked.connect(self.send_message)
         self.input.returnPressed.connect(self.send_message)
+        self.logout_button.clicked.connect(self.logout)
+
         layout = QVBoxLayout()
-        layout.addWidget(self.status)
-        layout.addWidget(self.transcript, 1)
-        layout.addWidget(self.input)
-        layout.addWidget(self.send_button)
+        for widget in (
+            self.status,
+            self.auth_title,
+            self.email,
+            self.password,
+            self.login_button,
+            self.signup_button,
+            self.transcript,
+            self.input,
+            self.send_button,
+            self.logout_button,
+        ):
+            layout.addWidget(widget)
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+        self._set_chat_visible(False)
         self.check_api()
+
+    def _set_chat_visible(self, visible: bool) -> None:
+        for widget in (
+            self.transcript,
+            self.input,
+            self.send_button,
+            self.logout_button,
+        ):
+            widget.setVisible(visible)
+        for widget in (
+            self.auth_title,
+            self.email,
+            self.password,
+            self.login_button,
+            self.signup_button,
+        ):
+            widget.setVisible(not visible)
 
     def check_api(self) -> None:
         try:
-            response = httpx.get("http://127.0.0.1:8000/health", timeout=2.0)
+            response = httpx.get(f"{API_BASE}/health", timeout=2.0)
             response.raise_for_status()
             self.status.setText("ATLAS API: conectado")
         except httpx.HTTPError:
             self.status.setText("ATLAS API: offline. Inicie o backend local.")
 
+    def _start_worker(self, worker: ApiWorker, operation: str) -> None:
+        if self._worker is not None:
+            return
+        self._worker = worker
+        self._pending_operation = operation
+        worker.succeeded.connect(self._on_success)
+        worker.failed.connect(self._on_failure)
+        worker.finished.connect(self._on_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def start_auth(self, operation: str) -> None:
+        email = self.email.text().strip()
+        password = self.password.text()
+        if not email or not password:
+            self.status.setText("Informe e-mail e senha.")
+            return
+        if len(password) < 8:
+            self.status.setText("A senha deve ter pelo menos 8 caracteres.")
+            return
+        self.login_button.setEnabled(False)
+        self.signup_button.setEnabled(False)
+        self.status.setText("Conectando ao Supabase Auth...")
+        self._start_worker(
+            ApiWorker(operation, email=email, password=password, parent=self),
+            operation,
+        )
+
     def send_message(self) -> None:
         message = self.input.text().strip()
-        if not message or self._chat_worker is not None:
+        if not message or self._worker is not None or not self._access_token:
             return
-
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
         self.input.clear()
         self.send_button.setEnabled(False)
         self.input.setEnabled(False)
+        self._start_worker(
+            ApiWorker(
+                "chat",
+                message=message,
+                access_token=self._access_token,
+                parent=self,
+            ),
+            "chat",
+        )
 
-        worker = ChatWorker(message, self)
-        self._chat_worker = worker
-        worker.response_received.connect(self._display_response)
-        worker.finished.connect(self._chat_finished)
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
+    def logout(self) -> None:
+        if self._worker is not None or not self._access_token:
+            return
+        token = self._access_token
+        self._access_token = ""
+        self.status.setText("Encerrando sessão...")
+        self._start_worker(ApiWorker("logout", access_token=token, parent=self), "logout")
 
-    def _display_response(self, answer: str) -> None:
-        self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
+    def _on_success(self, result: Any) -> None:
+        if not isinstance(result, dict):
+            self.status.setText("A API retornou uma resposta inválida.")
+            return
+        operation = result.get("operation")
+        if operation in ("login", "signup"):
+            token = result.get("access_token")
+            if isinstance(token, str) and token:
+                self._access_token = token
+                user_id = result.get("user_id")
+                suffix = f" · usuário {user_id}" if isinstance(user_id, str) else ""
+                self.status.setText(f"ATLAS conectado{suffix}")
+                self.transcript.clear()
+                self._set_chat_visible(True)
+                self.input.setFocus()
+            elif operation == "signup" and result.get("confirmation_required"):
+                self.status.setText(
+                    "Conta criada. Confirme o e-mail e depois entre com sua senha."
+                )
+            else:
+                self.status.setText("A autenticação não retornou uma sessão válida.")
+        elif operation == "chat":
+            answer = result.get("response")
+            if isinstance(answer, str):
+                self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
+        elif operation == "logout":
+            self._set_chat_visible(False)
+            self.transcript.clear()
+            self.email.clear()
+            self.password.clear()
+            self.status.setText("Sessão encerrada.")
+        self._update_controls()
 
-    def _chat_finished(self) -> None:
-        self.send_button.setEnabled(True)
-        self.input.setEnabled(True)
-        self.input.setFocus()
-        self._chat_worker = None
+    def _on_failure(self, message: str) -> None:
+        if self._pending_operation == "logout":
+            self._set_chat_visible(False)
+            self.transcript.clear()
+            self.email.clear()
+            self.password.clear()
+            self.status.setText(
+                "Sessão local encerrada; o serviço não confirmou o encerramento remoto."
+            )
+        else:
+            self.status.setText(message)
+        self._update_controls()
+
+    def _on_finished(self) -> None:
+        self._worker = None
+        self._update_controls()
+
+    def _update_controls(self) -> None:
+        busy = self._worker is not None
+        self.login_button.setEnabled(not busy)
+        self.signup_button.setEnabled(not busy)
+        self.send_button.setEnabled(not busy and bool(self._access_token))
+        self.input.setEnabled(not busy and bool(self._access_token))
 
 
 def main() -> None:
