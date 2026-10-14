@@ -58,7 +58,7 @@ class SQLiteMemoryStore:
             connection.commit()
 
     async def list_memories(self, limit: int = 50) -> list[dict[str, Any]]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             rows = connection.execute(
                 "SELECT id, kind, content, source, scope, confidence, created_at "
                 "FROM atlas_memories ORDER BY created_at DESC, rowid DESC LIMIT ?",
@@ -76,7 +76,7 @@ class SQLiteMemoryStore:
             "confidence": memory.get("confidence", 1.0),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute(
                 """
                 INSERT INTO atlas_memories
@@ -90,7 +90,7 @@ class SQLiteMemoryStore:
         return row
 
     async def delete_memory(self, memory_id: UUID) -> bool:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             cursor = connection.execute(
                 "DELETE FROM atlas_memories WHERE id = ?", (str(memory_id),)
             )
