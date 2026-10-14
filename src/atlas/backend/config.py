@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", validation_alias="ATLAS_LOG_LEVEL")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
+    memory_backend: str = Field(default="local", validation_alias="ATLAS_MEMORY_BACKEND")
+    local_db_path: str = Field(default="", validation_alias="ATLAS_LOCAL_DB_PATH")
     supabase_url: str = Field(default="", validation_alias="SUPABASE_URL")
     supabase_key: str = Field(default="", validation_alias="SUPABASE_KEY")
 
