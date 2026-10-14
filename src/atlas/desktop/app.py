@@ -309,6 +309,13 @@ class AtlasWindow(QMainWindow):
                 )
             else:
                 self.status.setText("A autenticação não retornou uma sessão válida.")
+        elif operation == "new_conversation":
+            conversation_id = result.get("conversation_id")
+            if isinstance(conversation_id, str):
+                self._conversation_id = conversation_id
+                self._settings.setValue("active_conversation_id", conversation_id)
+                self.transcript.clear()
+                self.status.setText("Nova conversa iniciada.")
         elif operation == "history":
             self.transcript.clear()
             for message in result.get("messages", []):
