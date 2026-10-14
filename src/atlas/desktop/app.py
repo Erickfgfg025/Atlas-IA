@@ -3,7 +3,7 @@ import sys
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, QSettings
 from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +36,7 @@ class ApiWorker(QThread):
         password: str = "",
         message: str = "",
         access_token: str = "",
+        conversation_id: str = "",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -44,33 +45,34 @@ class ApiWorker(QThread):
         self.password = password
         self.message = message
         self.access_token = access_token
+        self.conversation_id = conversation_id
 
     def run(self) -> None:
         try:
+            headers = {"Authorization": f"Bearer {self.access_token}"} if self.access_token else {}
             if self.operation in ("login", "signup"):
                 response = httpx.post(
                     f"{API_BASE}/auth/{self.operation}",
                     json={"email": self.email, "password": self.password},
                     timeout=15.0,
                 )
-            elif self.operation == "chat":
-                headers = (
-                    {"Authorization": f"Bearer {self.access_token}"}
-                    if self.access_token
-                    else {}
+            elif self.operation == "new_conversation":
+                response = httpx.post(f"{API_BASE}/conversations", json={"title": "Nova conversa"}, headers=headers, timeout=10.0)
+            elif self.operation == "history":
+                response = httpx.get(
+                    f"{API_BASE}/conversations/{self.conversation_id}/messages",
+                    headers=headers,
+                    timeout=10.0,
                 )
+            elif self.operation == "chat":
                 response = httpx.post(
                     f"{API_BASE}/chat",
-                    json={"message": self.message},
+                    json={"message": self.message, "conversation_id": self.conversation_id or None},
                     headers=headers,
                     timeout=60.0,
                 )
             elif self.operation == "logout":
-                response = httpx.post(
-                    f"{API_BASE}/auth/logout",
-                    headers={"Authorization": f"Bearer {self.access_token}"},
-                    timeout=8.0,
-                )
+                response = httpx.post(f"{API_BASE}/auth/logout", headers=headers, timeout=8.0)
                 if response.status_code == 204:
                     self.succeeded.emit({"operation": "logout"})
                     return
@@ -84,21 +86,30 @@ class ApiWorker(QThread):
                 payload = {}
 
             if not response.is_success:
-                detail = payload.get("detail", "A solicitação falhou.")
+                detail = payload.get("detail", "A solicitação falhou.") if isinstance(payload, dict) else "A solicitação falhou."
                 self.failed.emit(str(detail))
                 return
-
             if self.operation in ("login", "signup"):
                 if not isinstance(payload, dict):
                     self.failed.emit("Resposta de autenticação inválida.")
                     return
                 self.succeeded.emit({"operation": self.operation, **payload})
-            else:
+            elif self.operation == "new_conversation":
+                if isinstance(payload, dict) and isinstance(payload.get("id"), str):
+                    self.succeeded.emit({"operation": "new_conversation", "conversation_id": payload["id"]})
+                else:
+                    self.failed.emit("Não foi possível criar uma conversa.")
+            elif self.operation == "history":
+                if isinstance(payload, list):
+                    self.succeeded.emit({"operation": "history", "messages": payload})
+                else:
+                    self.failed.emit("O histórico retornou uma resposta inválida.")
+            elif self.operation == "chat":
                 answer = payload.get("response") if isinstance(payload, dict) else None
                 if not isinstance(answer, str) or not answer.strip():
                     self.failed.emit("A API retornou uma resposta inválida.")
                     return
-                self.succeeded.emit({"operation": "chat", "response": answer})
+                self.succeeded.emit({"operation": "chat", "response": answer, "conversation_id": payload.get("conversation_id")})
         except httpx.HTTPError:
             self.failed.emit("Não foi possível conectar à API local.")
         except (TypeError, ValueError):
@@ -112,6 +123,8 @@ class AtlasWindow(QMainWindow):
         self._auth_mode = "supabase"
         self._worker: ApiWorker | None = None
         self._pending_operation = ""
+        self._settings = QSettings("AtlasAI", "ATLAS")
+        self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
         self.setMinimumSize(600, 420)
@@ -135,6 +148,8 @@ class AtlasWindow(QMainWindow):
         self.send_button = QPushButton("Enviar")
         self.logout_button = QPushButton("Sair da conta")
         self.memories_button = QPushButton("Memórias")
+        self.new_conversation_button = QPushButton("Nova conversa")
+        self.new_conversation_button.clicked.connect(self.new_conversation)
         self.memories_button.clicked.connect(self.open_memories)
         self.send_button.clicked.connect(self.send_message)
         self.input.returnPressed.connect(self.send_message)
@@ -152,6 +167,7 @@ class AtlasWindow(QMainWindow):
             self.input,
             self.send_button,
             self.memories_button,
+            self.new_conversation_button,
             self.logout_button,
         ):
             layout.addWidget(widget)
@@ -165,6 +181,7 @@ class AtlasWindow(QMainWindow):
         for widget in (self.transcript, self.input, self.send_button):
             widget.setVisible(visible)
         self.memories_button.setVisible(visible)
+        self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
         self.logout_button.setVisible(visible and self._auth_mode == "supabase")
         for widget in (
             self.auth_title,
@@ -185,7 +202,9 @@ class AtlasWindow(QMainWindow):
             )
             if self._auth_mode == "local":
                 self._set_chat_visible(True)
-                self.status.setText("ATLAS conectado · memória local SQLite")
+                self.status.setText("ATLAS conectado · memória e histórico locais")
+                if self._conversation_id:
+                    self._load_history()
             else:
                 self.status.setText("ATLAS API conectada · autenticação Supabase")
         except (httpx.HTTPError, ValueError):
@@ -236,9 +255,23 @@ class AtlasWindow(QMainWindow):
                 "chat",
                 message=message,
                 access_token=self._access_token,
+                conversation_id=self._conversation_id,
                 parent=self,
             ),
             "chat",
+        )
+
+    def new_conversation(self) -> None:
+        if self._worker is not None or self._auth_mode != "local":
+            return
+        self._start_worker(ApiWorker("new_conversation", parent=self), "new_conversation")
+
+    def _load_history(self) -> None:
+        if self._worker is not None or not self._conversation_id or self._auth_mode != "local":
+            return
+        self._start_worker(
+            ApiWorker("history", conversation_id=self._conversation_id, parent=self),
+            "history",
         )
 
     def open_memories(self) -> None:
@@ -276,8 +309,30 @@ class AtlasWindow(QMainWindow):
                 )
             else:
                 self.status.setText("A autenticação não retornou uma sessão válida.")
+        elif operation == "new_conversation":
+            conversation_id = result.get("conversation_id")
+            if isinstance(conversation_id, str):
+                self._conversation_id = conversation_id
+                self._settings.setValue("active_conversation_id", conversation_id)
+                self.transcript.clear()
+                self.status.setText("Nova conversa iniciada.")
+        elif operation == "history":
+            self.transcript.clear()
+            for message in result.get("messages", []):
+                if not isinstance(message, dict):
+                    continue
+                role = message.get("role")
+                content = message.get("content")
+                if role in ("user", "assistant") and isinstance(content, str):
+                    label = "Você" if role == "user" else "ATLAS"
+                    self.transcript.append(f"<b>{label}:</b> {_safe_html(content)}")
+            self.status.setText("Histórico da conversa restaurado.")
         elif operation == "chat":
             answer = result.get("response")
+            conversation_id = result.get("conversation_id")
+            if isinstance(conversation_id, str) and conversation_id:
+                self._conversation_id = conversation_id
+                self._settings.setValue("active_conversation_id", conversation_id)
             if isinstance(answer, str):
                 self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
         elif operation == "logout":
