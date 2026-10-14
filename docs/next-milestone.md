@@ -22,6 +22,6 @@
 4. Em outro terminal, execute `python -m atlas.desktop.app`.
 5. Confirme o status da API, envie uma mensagem e verifique a resposta.
 6. Enquanto aguarda a resposta, redimensione a janela e mova-a para confirmar que a interface continua responsiva.
-7. Envie texto contendo `<script>alert(1)</script>`; ele deve aparecer como texto literal, sem ser executado.
+7. Envie uma mensagem contendo tags HTML; elas devem aparecer como texto literal, sem serem interpretadas.
 
 A validação automatizada usa um provedor simulado. Ela não substitui o teste manual com credenciais reais nem comprova o funcionamento do SDK Gemini, do Supabase ou da interface neste ambiente.
