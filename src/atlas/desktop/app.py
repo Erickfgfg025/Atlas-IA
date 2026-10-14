@@ -94,6 +94,11 @@ class ApiWorker(QThread):
                     self.failed.emit("Resposta de autenticação inválida.")
                     return
                 self.succeeded.emit({"operation": self.operation, **payload})
+            elif self.operation == "new_conversation":
+                if isinstance(payload, dict) and isinstance(payload.get("id"), str):
+                    self.succeeded.emit({"operation": "new_conversation", "conversation_id": payload["id"]})
+                else:
+                    self.failed.emit("Não foi possível criar uma conversa.")
             elif self.operation == "history":
                 if isinstance(payload, list):
                     self.succeeded.emit({"operation": "history", "messages": payload})
