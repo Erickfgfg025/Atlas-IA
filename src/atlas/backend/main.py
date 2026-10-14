@@ -66,6 +66,14 @@ class MemoryResponse(BaseModel):
     created_at: datetime
 
 
+class MemoryUpdateRequest(BaseModel):
+    kind: MemoryKind | None = None
+    content: str | None = Field(default=None, min_length=1, max_length=12000)
+    source: str | None = Field(default=None, min_length=1, max_length=200)
+    scope: str | None = Field(default=None, min_length=1, max_length=200)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
 async def get_memory_store(
     credentials: Annotated[
         HTTPAuthorizationCredentials | None,
@@ -162,6 +170,23 @@ async def create_memory(
     return MemoryResponse.model_validate(row)
 
 
+@app.put("/memories/{memory_id}", response_model=MemoryResponse)
+async def update_memory(
+    memory_id: UUID,
+    memory: MemoryUpdateRequest,
+    store: Any = Depends(get_memory_store),
+) -> MemoryResponse:
+    changes = memory.model_dump(exclude_unset=True, mode="json")
+    if not changes:
+        raise HTTPException(status_code=422, detail="Informe pelo menos um campo para atualizar.")
+    if any(value is None for value in changes.values()):
+        raise HTTPException(status_code=422, detail="Os campos informados não podem ser nulos.")
+    row = await store.update_memory(memory_id, changes)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Memória não encontrada.")
+    return MemoryResponse.model_validate(row)
+
+
 @app.delete("/memories/{memory_id}", status_code=204)
 async def delete_memory(
     memory_id: UUID,
@@ -178,6 +203,34 @@ async def chat(
     request: ChatRequest,
     store: Any = Depends(get_memory_store),
 ) -> ChatResponse:
+    message = request.message.strip()
+    normalized = message.casefold()
+    remember_prefixes = (
+        "lembre-se que ",
+        "lembre que ",
+        "guarde que ",
+        "memorize que ",
+        "não esqueça que ",
+        "nao esqueca que ",
+    )
+    for prefix in remember_prefixes:
+        if normalized.startswith(prefix):
+            memory_content = message[len(prefix):].strip()
+            if not memory_content:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Diga o que você quer que o ATLAS lembre.",
+                )
+            row = await store.create_memory(
+                {
+                    "kind": "semantic",
+                    "content": memory_content,
+                    "source": "explicit_user_request",
+                    "scope": "user",
+                    "confidence": 1.0,
+                }
+            )
+            return ChatResponse(response=f"Memória salva: {row['content']}")
     try:
         try:
             stored_memories = await store.list_memories(limit=100)
