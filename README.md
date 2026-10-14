@@ -1,34 +1,40 @@
 # ATLAS AI
 
-Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI, Gemini via `google-genai` e Supabase Auth.
+Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via `google-genai`. O projeto começa com memória local SQLite; Supabase fica como opção futura de autenticação e armazenamento em nuvem.
 
 ## Arquitetura atual
-- `src/atlas/desktop/`: interface com cadastro, login, chat autenticado e logout.
-- `src/atlas/backend/`: API, configuração e autenticação.
-- `src/atlas/providers/`: adaptadores Gemini e Supabase.
-- `src/atlas/memory/`: contratos e repositório Supabase usando o token do usuário.
+- `src/atlas/desktop/`: interface nativa, chat e modo local sem cadastro remoto.
+- `src/atlas/backend/`: API e seleção de modo local ou Supabase.
+- `src/atlas/providers/`: adaptador Gemini.
+- `src/atlas/memory/`: contrato de memória, SQLite local e repositório Supabase.
 - `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras; sem shell arbitrário.
-- `supabase/migrations/`: migração de memória com RLS, ainda não aplicada a um projeto real.
+- `supabase/migrations/`: migração de memória com RLS, versionada para uso futuro e ainda não aplicada a um projeto real.
 - `tests/`: testes sem credenciais externas.
 - `docs/`: arquitetura, segurança, autenticação e memória.
 
-A API implementa `GET /memories`, `POST /memories` e `DELETE /memories/{id}`. A persistência real depende de aplicar a migração ao projeto Supabase correto. A recuperação automática de memórias no contexto do Gemini ainda não está ativada.
+## Modos de operação
+- **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
+- **supabase (futuro/opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e a migração aplicada ao projeto escolhido.
+
+A API implementa `GET /memories`, `POST /memories` e `DELETE /memories/{id}`. A recuperação automática de memórias no contexto do Gemini ainda não está ativada.
 
 ## Requisitos
-Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface. Para conversar, é necessário um projeto Supabase com Email Auth e uma chave Gemini.
+Python 3.11, 3.12 ou 3.13. Windows 10/11 para validar a interface. Para conversar, é necessário configurar `GEMINI_API_KEY`.
 
 ## Instalar no PowerShell
 ```powershell
 git clone https://github.com/Erickfgfg025/Atlas-IA.git
 cd Atlas-IA
 py -3.12 -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
 
-Configure localmente `GEMINI_API_KEY`, `SUPABASE_URL` e `SUPABASE_KEY`. Use a chave publicável/anon do Supabase, nunca `service_role` ou chave secreta. Não comite `.env`. Habilite Email Auth e confirme o endereço se o projeto exigir.
+Configure `GEMINI_API_KEY` em `.env`. Por padrão, `ATLAS_MEMORY_BACKEND=local`. O arquivo SQLite é criado automaticamente no diretório de dados do usuário. Para escolher outro local, defina `ATLAS_LOCAL_DB_PATH`. Não comite `.env`.
+
+Para ativar o modo remoto posteriormente, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use `service_role` ou chave secreta no desktop.
 
 ## Executar
 Terminal 1:
@@ -40,19 +46,15 @@ Terminal 2:
 python -m atlas.desktop.app
 ```
 
-O access token fica apenas na memória do processo. Não há login automático nesta versão.
-
 ## Testar
 ```powershell
 pytest
 ruff check .
 ```
 
-Testes simulados verificam autenticação e uso do token/ID correto para operações de memória. Depois de aplicar a migração, valide a integração real com duas contas de teste.
-
-## Limites
+## Limites atuais
 - Nenhum deploy ou migração remota foi executado.
-- A memória ainda não está disponível até aplicar a migração e verificar o projeto.
-- Memórias ainda não são recuperadas automaticamente pelo Gemini.
+- A memória local persiste em SQLite; ainda não é recuperada automaticamente pelo Gemini.
+- Modo Supabase está mantido como caminho opcional, mas não foi validado com um projeto real nesta etapa.
 - Sem voz ou automação autônoma do Windows.
 - Não exponha a API além de `127.0.0.1` nesta fase.
