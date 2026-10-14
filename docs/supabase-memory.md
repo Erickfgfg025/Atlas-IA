@@ -1,34 +1,38 @@
-# Supabase: fundação da memória persistente
+# Supabase: memória persistente
 
-## Estado
+## Estado atual
 
-A migração inicial está em `supabase/migrations/202610140001_create_atlas_memories.sql`. Ela define a tabela e as políticas de segurança, mas **não foi aplicada a nenhum projeto Supabase** e o backend ainda não lê nem grava memórias.
+A migração está em `supabase/migrations/202610140001_create_atlas_memories.sql`. Os endpoints de leitura, criação e exclusão foram implementados, mas **a migração ainda não foi aplicada a nenhum projeto Supabase**. A persistência real depende de confirmar o projeto e aplicar a migração.
 
 ## Modelo de dados
 
-- `id`: identificador UUID gerado no banco.
-- `user_id`: usuário autenticado em `auth.users`; exclusão em cascata.
+- `id`: UUID gerado no banco.
+- `user_id`: usuário de `auth.users`; exclusão em cascata.
 - `kind`: session, episodic, semantic, project ou operational.
-- `content`: conteúdo limitado a 12.000 caracteres.
-- `source`: origem limitada a 200 caracteres.
-- `scope`: escopo descritivo limitado a 200 caracteres.
-- `confidence`: valor entre 0 e 1.
-- `created_at`: timestamp definido pelo banco.
+- `content`: até 12.000 caracteres.
+- `source` e `scope`: até 200 caracteres cada.
+- `confidence`: número entre 0 e 1.
+- `created_at`: timestamp do banco.
 
-Índices atendem listagens recentes por usuário e por categoria.
+## Endpoints implementados
 
-## Segurança
+Todos exigem `Authorization: Bearer <access_token>` válido:
 
-1. RLS está habilitado na tabela.
-2. As políticas de leitura, criação, atualização e exclusão exigem que `auth.uid() = user_id`.
-3. O papel `anon` não recebe permissões de tabela.
-4. A chave `service_role` ignora RLS e nunca deve ser enviada à interface desktop.
-5. O backend ainda precisa de um fluxo de autenticação para obter a identidade verificada do usuário. Não aceite `user_id` arbitrário vindo do corpo da requisição.
-6. Não conecte a memória ao endpoint de chat antes de estabelecer esse fluxo.
+- `GET /memories?limit=50`: lista até 100 memórias do usuário autenticado.
+- `POST /memories`: cria uma memória.
+- `DELETE /memories/{id}`: exclui uma memória própria; retorna 404 quando não há linha acessível com aquele ID.
 
-## Aplicar a migração, quando o projeto correto estiver confirmado
+O backend valida a sessão via Supabase Auth. Depois chama a Data API com a chave publicável/anon e o access token do usuário, sem `service_role`. O `user_id` é derivado da identidade validada, nunca do corpo da requisição. Consultas também filtram pelo usuário; RLS continua sendo a barreira principal.
 
-Com Supabase CLI instalado e autenticado:
+## Segurança e limitações
+
+1. A migração habilita RLS e exige `auth.uid() = user_id`.
+2. `anon` não recebe permissões de tabela.
+3. Se a migração não estiver aplicada ou a tabela não estiver exposta à Data API, os endpoints retornam erro de serviço indisponível.
+4. Os testes usam HTTPX MockTransport. Eles não substituem integração real com o Supabase.
+5. A recuperação automática de memórias no contexto do Gemini ainda não está implementada.
+
+## Aplicar a migração quando o projeto correto estiver confirmado
 
 ```powershell
 supabase login
@@ -36,14 +40,13 @@ supabase link --project-ref SEU_PROJECT_REF
 supabase db push
 ```
 
-Substitua o marcador pelo identificador do projeto pretendido. Confira o destino antes de executar `db push`. Esta etapa não foi executada por este repositório.
+Confira o destino antes de executar `db push`. Nenhuma migração remota foi executada por este repositório.
 
 ## Próxima implementação
 
-1. Decidir o modelo de autenticação desktop: Supabase Auth com sessão de usuário é a opção preferida.
-2. Validar tokens no backend e derivar o ID do usuário a partir da identidade verificada.
-3. Implementar um repositório de memória que receba um cliente autenticado, sem credenciais privilegiadas na interface.
-4. Adicionar testes com cliente/banco simulado e teste de isolamento entre dois usuários.
-5. Só então integrar recuperação de memórias ao contexto do Gemini, com limite de quantidade e controle do que pode ser salvo.
+1. Confirmar e aplicar a migração ao projeto correto.
+2. Testar com duas contas que não haja leitura, criação ou exclusão cruzada.
+3. Integrar recuperação limitada ao contexto do Gemini.
+4. Adicionar controles para listar e apagar memórias na interface.
 
-Não há busca semântica/embeddings nesta etapa. Primeiro garantir isolamento e operações básicas; depois avaliar recuperação semântica.
+Busca semântica/embeddings fica para depois de validar isolamento e operações básicas.
