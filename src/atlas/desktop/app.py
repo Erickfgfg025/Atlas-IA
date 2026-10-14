@@ -3,7 +3,7 @@ import sys
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, QSettings
 from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +36,7 @@ class ApiWorker(QThread):
         password: str = "",
         message: str = "",
         access_token: str = "",
+        conversation_id: str = "",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -44,14 +45,25 @@ class ApiWorker(QThread):
         self.password = password
         self.message = message
         self.access_token = access_token
+        self.conversation_id = conversation_id
 
     def run(self) -> None:
         try:
-            if self.operation in ("login", "signup"):
-                response = httpx.post(
+            if self.operation == "history":
+                if isinstance(payload, list):
+                    self.succeeded.emit({"operation": "history", "messages": payload})
+                else:
+                    self.failed.emit("O histórico retornou uma resposta inválida.")
+            elif self.operation in ("login", "signup"):                response = httpx.post(
                     f"{API_BASE}/auth/{self.operation}",
                     json={"email": self.email, "password": self.password},
                     timeout=15.0,
+                )
+            elif self.operation == "history":
+                response = httpx.get(
+                    f"{API_BASE}/conversations/{self.conversation_id}/messages",
+                    headers=({"Authorization": f"Bearer {self.access_token}"} if self.access_token else {}),
+                    timeout=10.0,
                 )
             elif self.operation == "chat":
                 headers = (
@@ -61,7 +73,7 @@ class ApiWorker(QThread):
                 )
                 response = httpx.post(
                     f"{API_BASE}/chat",
-                    json={"message": self.message},
+                    json={"message": self.message, "conversation_id": self.conversation_id or None},
                     headers=headers,
                     timeout=60.0,
                 )
@@ -98,7 +110,7 @@ class ApiWorker(QThread):
                 if not isinstance(answer, str) or not answer.strip():
                     self.failed.emit("A API retornou uma resposta inválida.")
                     return
-                self.succeeded.emit({"operation": "chat", "response": answer})
+                self.succeeded.emit({"operation": "chat", "response": answer, "conversation_id": payload.get("conversation_id")})
         except httpx.HTTPError:
             self.failed.emit("Não foi possível conectar à API local.")
         except (TypeError, ValueError):
@@ -112,6 +124,8 @@ class AtlasWindow(QMainWindow):
         self._auth_mode = "supabase"
         self._worker: ApiWorker | None = None
         self._pending_operation = ""
+        self._settings = QSettings("AtlasAI", "ATLAS")
+        self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
         self.setMinimumSize(600, 420)
@@ -185,7 +199,9 @@ class AtlasWindow(QMainWindow):
             )
             if self._auth_mode == "local":
                 self._set_chat_visible(True)
-                self.status.setText("ATLAS conectado · memória local SQLite")
+                self.status.setText("ATLAS conectado · memória e histórico locais")
+                if self._conversation_id:
+                    self._load_history()
             else:
                 self.status.setText("ATLAS API conectada · autenticação Supabase")
         except (httpx.HTTPError, ValueError):
