@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
@@ -11,6 +11,7 @@ from atlas.backend.auth import (
     AuthenticatedUser,
     require_authenticated_session,
     require_authenticated_user,
+    verify_supabase_access_token,
 )
 from atlas.backend.auth_sessions import (
     PasswordCredentials,
@@ -18,13 +19,14 @@ from atlas.backend.auth_sessions import (
     sign_out,
     sign_up_with_password,
 )
-from atlas.backend.config import get_settings
+from atlas.backend.config import Settings, get_settings
 from atlas.memory.contracts import MemoryKind
+from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
+app = FastAPI(title=settings.app_name, version="0.2.0")
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -65,9 +67,62 @@ class MemoryResponse(BaseModel):
     created_at: datetime
 
 
+async def require_chat_access(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(_bearer),
+    ],
+    app_settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Local mode is single-user and loopback-only; cloud mode verifies Supabase Auth."""
+    if app_settings.memory_backend == "local":
+        return
+    if app_settings.memory_backend != "supabase":
+        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    await verify_supabase_access_token(credentials.credentials, app_settings)
+
+
+async def get_memory_store(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(_bearer),
+    ],
+    app_settings: Annotated[Settings, Depends(get_settings)],
+) -> Any:
+    """Select local SQLite or user-scoped Supabase storage from configuration."""
+    if app_settings.memory_backend == "local":
+        return SQLiteMemoryStore(app_settings.local_db_path or None)
+    if app_settings.memory_backend != "supabase":
+        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    session = await verify_supabase_access_token(credentials.credentials, app_settings)
+    return SupabaseMemoryStore(
+        app_settings,
+        credentials.credentials,
+        session.user_id,
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-api", "environment": settings.environment}
+    return {
+        "status": "ok",
+        "service": "atlas-api",
+        "environment": settings.environment,
+        "memory_backend": settings.memory_backend,
+        "auth_mode": "local" if settings.memory_backend == "local" else "supabase",
+    }
 
 
 @app.post("/auth/signup", response_model=AuthSessionResponse)
@@ -114,9 +169,8 @@ async def auth_me(
 @app.get("/memories", response_model=list[MemoryResponse])
 async def list_memories(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    session: AuthenticatedSession = Depends(require_authenticated_session),
+    store: Any = Depends(get_memory_store),
 ) -> list[MemoryResponse]:
-    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
     rows = await store.list_memories(limit=limit)
     return [MemoryResponse.model_validate(row) for row in rows]
 
@@ -124,9 +178,8 @@ async def list_memories(
 @app.post("/memories", response_model=MemoryResponse, status_code=201)
 async def create_memory(
     memory: MemoryCreateRequest,
-    session: AuthenticatedSession = Depends(require_authenticated_session),
+    store: Any = Depends(get_memory_store),
 ) -> MemoryResponse:
-    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
     row = await store.create_memory(memory.model_dump(mode="json"))
     return MemoryResponse.model_validate(row)
 
@@ -134,9 +187,8 @@ async def create_memory(
 @app.delete("/memories/{memory_id}", status_code=204)
 async def delete_memory(
     memory_id: UUID,
-    session: AuthenticatedSession = Depends(require_authenticated_session),
+    store: Any = Depends(get_memory_store),
 ) -> Response:
-    store = SupabaseMemoryStore(settings, session.access_token, session.user_id)
     deleted = await store.delete_memory(memory_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Memória não encontrada.")
@@ -146,7 +198,7 @@ async def delete_memory(
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    _access: None = Depends(require_chat_access),
 ) -> ChatResponse:
     try:
         provider = GeminiProvider(settings.gemini_api_key, settings.gemini_model)
