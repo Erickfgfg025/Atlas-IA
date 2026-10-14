@@ -1,7 +1,7 @@
 """Manage saved memories in a separate non-blocking dialog."""
 import httpx
 from PySide6.QtCore import QThread, Signal, Qt
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout
 
 API_BASE = "http://127.0.0.1:8000"
 
