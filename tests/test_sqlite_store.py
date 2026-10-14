@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from atlas.memory.sqlite_store import SQLiteMemoryStore
@@ -6,7 +7,7 @@ from atlas.memory.sqlite_store import SQLiteMemoryStore
 def test_sqlite_store_persists_memories_between_instances(tmp_path):
     database = tmp_path / "atlas.db"
     store = SQLiteMemoryStore(database)
-    created = __import__("asyncio").run(
+    created = asyncio.run(
         store.create_memory(
             {
                 "kind": "project",
@@ -19,7 +20,7 @@ def test_sqlite_store_persists_memories_between_instances(tmp_path):
     )
 
     reloaded_store = SQLiteMemoryStore(database)
-    rows = __import__("asyncio").run(reloaded_store.list_memories())
+    rows = asyncio.run(reloaded_store.list_memories())
     assert len(rows) == 1
     assert rows[0]["id"] == created["id"]
     assert rows[0]["content"] == "ATLAS usa SQLite local"
@@ -27,13 +28,12 @@ def test_sqlite_store_persists_memories_between_instances(tmp_path):
 
 
 def test_sqlite_store_delete_only_existing_memory(tmp_path):
-    import asyncio
-
     store = SQLiteMemoryStore(tmp_path / "atlas.db")
     created = asyncio.run(
         store.create_memory(
             {"kind": "semantic", "content": "Persistente", "source": "test"}
         )
     )
-    assert asyncio.run(store.delete_memory(UUID(created["id"]))) is True
-    assert asyncio.run(store.delete_memory(UUID(created["id"]))) is False
+    memory_id = UUID(created["id"])
+    assert asyncio.run(store.delete_memory(memory_id)) is True
+    assert asyncio.run(store.delete_memory(memory_id)) is False
