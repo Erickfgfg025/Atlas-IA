@@ -8,6 +8,9 @@ set "PYTHON=%ATLAS_ROOT%.venv\Scripts\python.exe"
 set "PYTHONW=%ATLAS_ROOT%.venv\Scripts\pythonw.exe"
 set "HEALTH_URL=http://127.0.0.1:8000/health"
 
+rem Create or refresh a normal Windows desktop shortcut.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = New-Object -ComObject WScript.Shell; $desktop = [Environment]::GetFolderPath('Desktop'); $shortcut = $shell.CreateShortcut((Join-Path $desktop 'ATLAS AI.lnk')); $shortcut.TargetPath = '%~f0'; $shortcut.WorkingDirectory = '%~dp0'; $shortcut.WindowStyle = 7; $shortcut.Description = 'Iniciar ATLAS AI'; $shortcut.Save()" >nul 2>&1
+
 if not exist "%PYTHON%" (
     echo.
     echo  ATLAS AI - Ambiente Python nao encontrado
@@ -39,7 +42,7 @@ echo.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r = Invoke-WebRequest -UseBasicParsing '%HEALTH_URL%' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; exit 1" >nul 2>&1
 if errorlevel 1 (
     echo [1/2] Iniciando o servidor local...
-    start "ATLAS AI - API" /min "%ComSpec%" /k "cd /d ""%ATLAS_ROOT%"" && ""%PYTHON%"" -m uvicorn atlas.backend.main:app --host 127.0.0.1 --port 8000"
+    start "ATLAS AI - API" /min "%PYTHON%" -m uvicorn atlas.backend.main:app --host 127.0.0.1 --port 8000
 ) else (
     echo [1/2] Servidor local ja esta ativo.
 )
@@ -60,6 +63,6 @@ echo Abrindo a interface...
 start "" "%PYTHONW%" -m atlas.desktop.app
 
 echo.
-echo ATLAS AI iniciado. Pode fechar esta janela.
+echo ATLAS AI iniciado. O atalho "ATLAS AI" foi criado na area de trabalho.
 timeout /t 2 /nobreak >nul
 exit /b 0
