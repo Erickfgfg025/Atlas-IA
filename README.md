@@ -29,6 +29,10 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
 - **supabase (opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e migração aplicada ao projeto escolhido.
 
+## Aplicativo portátil para Windows
+
+O workflow **Windows Desktop Build** cria um pacote com executáveis para a interface, a API local e o inicializador de um clique. Consulte [`docs/INSTALAR_WINDOWS.md`](docs/INSTALAR_WINDOWS.md) para baixar o artefato em **Actions** e configurar a chave Gemini na primeira abertura. O pacote é portátil, ainda não é um instalador tradicional.
+
 ## Instalação no PowerShell
 Python 3.11, 3.12 ou 3.13. Para conversar, configure `GEMINI_API_KEY` em `.env`.
 
