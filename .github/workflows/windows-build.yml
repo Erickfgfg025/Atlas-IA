@@ -1,0 +1,79 @@
+name: Windows Desktop Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/premium-desktop-interface
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install application and packager
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pyinstaller==6.14.2
+
+      - name: Build API executable
+        shell: pwsh
+        run: pyinstaller --noconfirm --clean --onefile --console --name "ATLAS API" --collect-all google.genai --collect-all supabase --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.lifespan.on scripts/api_entry.py
+
+      - name: Build desktop executable
+        shell: pwsh
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name "ATLAS Desktop" --collect-all PySide6 scripts/desktop_entry.py
+
+      - name: Build one-click launcher
+        shell: pwsh
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name "ATLAS AI" scripts/launcher.py
+
+      - name: Assemble portable application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release/ATLAS-AI/logs | Out-Null
+          Copy-Item "dist/ATLAS AI.exe" "release/ATLAS-AI/ATLAS AI.exe"
+          Copy-Item "dist/ATLAS API.exe" "release/ATLAS-AI/ATLAS API.exe"
+          Copy-Item "dist/ATLAS Desktop.exe" "release/ATLAS-AI/ATLAS Desktop.exe"
+          @"
+          ATLAS AI local configuration
+          ATLAS_MEMORY_BACKEND=local
+          GEMINI_API_KEY=
+          GEMINI_MODEL=gemini-3.8-flash
+          "@ | Set-Content -Encoding utf8 "release/ATLAS-AI/.env.example"
+          @"
+          ATLAS AI - Windows portable package
+
+          1. Run "ATLAS AI.exe".
+          2. On first launch, enter your Gemini API key in the setup prompt.
+          3. The key is saved locally in .env beside the application.
+          4. Keep the application folder together; do not move individual EXE files.
+          5. If startup fails, check logs/api.log.
+
+          The local API listens only on 127.0.0.1.
+          Do not share the .env file: it contains your private API key.
+          "@ | Set-Content -Encoding utf8 "release/ATLAS-AI/LEIA-ME.txt"
+          Compress-Archive -Path "release/ATLAS-AI" -DestinationPath "release/ATLAS-AI-Windows.zip" -Force
+
+      - name: Upload portable Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-AI-Windows
+          path: release/ATLAS-AI-Windows.zip
+          if-no-files-found: error
+          retention-days: 14
