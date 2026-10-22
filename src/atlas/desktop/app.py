@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal, QSettings, QBuffer, QByteArray, QIODevice, QUrl, QTimer
+from PySide6.QtCore import QThread, Signal, QSettings, QBuffer, QByteArray, QIODevice, QUrl, QTimer, Qt
 from PySide6.QtMultimedia import (
     QAudioInput,
     QAudioOutput,
@@ -17,6 +17,7 @@ from PySide6.QtMultimedia import (
 )
 from PySide6.QtWidgets import QFileDialog
 from atlas.desktop.memories_dialog import MemoryDialog
+from atlas.desktop.voice_orb import VoiceOrb
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -179,6 +180,7 @@ class AtlasWindow(QMainWindow):
         self._audio_output = QAudioOutput(self)
         self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio_output)
+        self._player.playbackStateChanged.connect(self._sync_orb_to_playback)
         self._audio_buffer: QBuffer | None = None
         self._last_answer = ""
         self._capture_session = QMediaCaptureSession(self)
@@ -199,6 +201,10 @@ class AtlasWindow(QMainWindow):
         self.setMinimumSize(600, 420)
 
         self.status = QLabel("ATLAS API: verificando...")
+        self.voice_orb = VoiceOrb(self)
+        self.voice_state = QLabel("PRONTO PARA CONVERSAR")
+        self.voice_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.voice_state.setStyleSheet("color: #8FA7C7; letter-spacing: 2px; font-size: 9px; font-weight: 600;")
         self.auth_title = QLabel("Entre na sua conta ATLAS")
         self.email = QLineEdit()
         self.email.setPlaceholderText("E-mail")
@@ -326,6 +332,7 @@ class AtlasWindow(QMainWindow):
         if self._auth_mode == "supabase" and not self._access_token:
             return
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
+        self._set_voice_state("thinking", "PENSANDO")
         self.input.clear()
         self.send_button.setEnabled(False)
         self.input.setEnabled(False)
@@ -431,6 +438,7 @@ class AtlasWindow(QMainWindow):
             self.status.setText("Entre na sua conta antes de usar a voz.")
             return
         self.status.setText("Gerando resposta em áudio...")
+        self._set_voice_state("thinking", "PREPARANDO A VOZ")
         self._start_worker(ApiWorker("voice_synthesize", message=self._last_answer, access_token=self._access_token, parent=self), "voice_synthesize")
 
     def _play_audio(self, audio_bytes: bytes) -> None:
@@ -445,7 +453,18 @@ class AtlasWindow(QMainWindow):
         self._audio_buffer = buffer
         self._player.setSourceDevice(buffer, QUrl("atlas-response.mp3"))
         self._player.play()
+        self._set_voice_state("speaking", "ATLAS ESTÁ FALANDO")
         self.status.setText("Reproduzindo resposta do ATLAS.")
+
+    def _set_voice_state(self, state: str, label: str) -> None:
+        self.voice_orb.set_state(state)
+        self.voice_state.setText(label)
+
+    def _sync_orb_to_playback(self, state: QMediaPlayer.PlaybackState) -> None:
+        if state == QMediaPlayer.PlaybackState.PlayingState:
+            self._set_voice_state("speaking", "ATLAS ESTÁ FALANDO")
+        elif state == QMediaPlayer.PlaybackState.StoppedState:
+            self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
 
     def new_conversation(self) -> None:
         if self._worker is not None or self._auth_mode != "local":
@@ -552,12 +571,15 @@ class AtlasWindow(QMainWindow):
             )
         else:
             self.status.setText(message)
+        self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
         self._update_controls()
 
     def _on_finished(self) -> None:
         if self._pending_operation == "voice_transcribe" and self._temporary_recording_path:
             self._cleanup_temporary_recording()
         self._worker = None
+        if self._pending_operation in ("chat", "voice_synthesize", "voice_transcribe") and self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+            self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
         self._update_controls()
 
     def _update_controls(self) -> None:
