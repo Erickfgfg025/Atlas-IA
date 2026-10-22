@@ -11,7 +11,7 @@ O núcleo do ATLAS deve continuar disponível quando o computador Windows estive
 - **Supabase PostgreSQL:** fonte principal para memórias, conversas, mensagens, preferências e tarefas.
 - **Fish Audio:** sintetiza respostas em voz. A chave fica somente no backend.
 - **STT em nuvem:** transcreve áudio enviado pelo cliente autorizado.
-- **Hermes Agent:** executor de tarefas com ferramentas explicitamente autorizadas.
+- **Hermes Agent:** ponte opcional inicial para `AIAgent`, desativada por padrão e limitada ao toolset `web`; exige checkout preparado separadamente. Ferramentas de terminal, arquivos e controle do computador permanecem desabilitadas até existir isolamento de execução.
 - **OpenJarvis:** camada de experimentação/seleção de modelos, integrada por adaptador. Não executar Hermes e OpenJarvis em duplicidade para cada solicitação.
 - **Obsidian:** vault Markdown como camada de conhecimento legível. Para acesso quando o PC estiver desligado, o vault precisa estar sincronizado com um armazenamento cloud suportado; um diretório local isolado não é acessível pelo Render.
 - **Windows desktop:** interface, captura de microfone, reprodução de áudio e ferramentas locais. Quando o PC estiver desligado, o backend pode continuar com tarefas cloud, mas não pode usar microfone, alto-falantes ou controlar aquele PC desligado.
@@ -46,7 +46,7 @@ O plano gratuito do Render pode suspender serviços por inatividade e tem limite
 1. Configuração de deploy e health check.
 2. Autenticação remota e armazenamento Supabase para conversas e memórias.
 3. Adaptadores de STT cloud e Fish Audio TTS, com timeouts e limites.
-4. Adaptador OpenJarvis compatível com API OpenAI (implementação inicial no backend); definir e implementar o executor Hermes Agent como serviço separado, com ferramentas autorizadas e limites de execução.
+4. Adaptador OpenJarvis compatível com API OpenAI e ponte inicial Hermes Agent com toolset web restrito; criar um worker isolado antes de habilitar ferramentas de terminal, arquivos ou controle local.
 5. Camada de pesquisa/sincronização do Obsidian.
 6. Cliente Windows com streaming, cancelamento de áudio e estado de conexão.
 7. Testes automatizados, migrações revisadas e checklist de deploy.
