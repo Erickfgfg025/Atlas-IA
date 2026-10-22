@@ -46,7 +46,7 @@ O plano gratuito do Render pode suspender serviços por inatividade e tem limite
 1. Configuração de deploy e health check.
 2. Autenticação remota e armazenamento Supabase para conversas e memórias.
 3. Adaptadores de STT cloud e Fish Audio TTS, com timeouts e limites.
-4. Orquestrador e adaptadores isolados para Hermes/OpenJarvis.
+4. Adaptador OpenJarvis compatível com API OpenAI (implementação inicial no backend); definir e implementar o executor Hermes Agent como serviço separado, com ferramentas autorizadas e limites de execução.
 5. Camada de pesquisa/sincronização do Obsidian.
 6. Cliente Windows com streaming, cancelamento de áudio e estado de conexão.
 7. Testes automatizados, migrações revisadas e checklist de deploy.
