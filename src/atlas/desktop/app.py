@@ -578,7 +578,7 @@ class AtlasWindow(QMainWindow):
         if self._pending_operation == "voice_transcribe" and self._temporary_recording_path:
             self._cleanup_temporary_recording()
         self._worker = None
-        if self._pending_operation in ("chat", "voice_synthesize", "voice_transcribe") and self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+        if self._pending_operation in ("chat", "voice_transcribe") and self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
             self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
         self._update_controls()
 
