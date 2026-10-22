@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     hermes_agent_enabled: bool = Field(default=False, validation_alias="HERMES_AGENT_ENABLED")
     hermes_agent_path: str = Field(default="", validation_alias="HERMES_AGENT_PATH")
     hermes_agent_model: str = Field(default="", validation_alias="HERMES_AGENT_MODEL")
-    hermes_agent_task_timeout_seconds: int = Field(default=90, ge=10, le=300, validation_alias="HERMES_AGENT_TASK_TIMEOUT_SECONDS")
+    hermes_agent_task_timeout_seconds: int = Field(
+        default=90,
+        ge=10,
+        le=300,
+        validation_alias="HERMES_AGENT_TASK_TIMEOUT_SECONDS",
+    )
     memory_backend: str = Field(default="local", validation_alias="ATLAS_MEMORY_BACKEND")
     local_db_path: str = Field(default="", validation_alias="ATLAS_LOCAL_DB_PATH")
     supabase_url: str = Field(default="", validation_alias="SUPABASE_URL")
