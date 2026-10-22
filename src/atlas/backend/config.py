@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", validation_alias="SUPABASE_KEY")
     fish_audio_api_key: str = Field(default="", validation_alias="FISH_AUDIO_API_KEY")
     fish_audio_reference_id: str = Field(default="", validation_alias="FISH_AUDIO_REFERENCE_ID")
-    fish_audio_model: str = Field(default="s1", validation_alias="FISH_AUDIO_MODEL")
+    fish_audio_model: str = Field(default="s2.1-pro-free", validation_alias="FISH_AUDIO_MODEL")
     max_audio_upload_mb: int = Field(default=20, ge=1, le=50, validation_alias="ATLAS_MAX_AUDIO_UPLOAD_MB")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
