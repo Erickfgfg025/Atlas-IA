@@ -5,7 +5,7 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 ## Arquitetura atual
 - `src/atlas/desktop/`: interface nativa, chat, controles de voz e diálogo para revisar/editar/excluir memórias.
 - `src/atlas/backend/`: API, comando explícito para salvar memória e seleção de modo local ou Supabase.
-- `src/atlas/providers/`: adaptadores Gemini, Gemini STT e Fish Audio TTS.
+- `src/atlas/providers/`: adaptadores Gemini, OpenJarvis, Hermes Agent, Gemini STT e Fish Audio TTS.
 - `src/atlas/memory/`: armazenamento SQLite/Supabase e seleção determinística de memórias relevantes.
 - `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras.
 - `supabase/migrations/`: migração de memória com RLS, versionada para uso futuro e ainda não aplicada a um projeto real.
