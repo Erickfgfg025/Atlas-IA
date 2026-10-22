@@ -3,7 +3,9 @@ import sys
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal, QSettings
+from PySide6.QtCore import QThread, Signal, QSettings, QBuffer, QByteArray, QIODevice, QUrl
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtWidgets import QFileDialog
 from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtWidgets import (
     QApplication,
@@ -37,6 +39,7 @@ class ApiWorker(QThread):
         message: str = "",
         access_token: str = "",
         conversation_id: str = "",
+        audio_path: str = "",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -46,6 +49,12 @@ class ApiWorker(QThread):
         self.message = message
         self.access_token = access_token
         self.conversation_id = conversation_id
+        self.audio_path = audio_path
+
+    @staticmethod
+    def _mime_type(path: str) -> str:
+        suffix = path.lower().rsplit(".", 1)[-1] if "." in path else ""
+        return {"mp3": "audio/mpeg", "wav": "audio/wav", "webm": "audio/webm", "ogg": "audio/ogg", "m4a": "audio/mp4", "mp4": "audio/mp4", "aac": "audio/aac", "flac": "audio/flac", "3gp": "audio/3gpp"}.get(suffix, "application/octet-stream")
 
     def run(self) -> None:
         try:
@@ -71,6 +80,33 @@ class ApiWorker(QThread):
                     headers=headers,
                     timeout=60.0,
                 )
+            elif self.operation == "voice_synthesize":
+                response = httpx.post(f"{API_BASE}/voice/synthesize", json={"text": self.message}, headers=headers, timeout=60.0)
+                if not response.is_success:
+                    try:
+                        payload = response.json()
+                    except ValueError:
+                        payload = {}
+                    detail = payload.get("detail", "Não foi possível gerar o áudio.") if isinstance(payload, dict) else "Não foi possível gerar o áudio."
+                    self.failed.emit(str(detail))
+                    return
+                if not response.content:
+                    self.failed.emit("O serviço de voz retornou um áudio vazio.")
+                    return
+                self.succeeded.emit({"operation": "voice_synthesize", "audio": response.content})
+                return
+            elif self.operation == "voice_transcribe":
+                try:
+                    with open(self.audio_path, "rb") as audio_file:
+                        response = httpx.post(
+                            f"{API_BASE}/voice/transcribe",
+                            files={"audio": (self.audio_path.rsplit("/", 1)[-1].rsplit("\\\\", 1)[-1], audio_file, self._mime_type(self.audio_path))},
+                            headers=headers,
+                            timeout=90.0,
+                        )
+                except OSError:
+                    self.failed.emit("Não foi possível abrir o arquivo de áudio selecionado.")
+                    return
             elif self.operation == "logout":
                 response = httpx.post(f"{API_BASE}/auth/logout", headers=headers, timeout=8.0)
                 if response.status_code == 204:
@@ -104,6 +140,12 @@ class ApiWorker(QThread):
                     self.succeeded.emit({"operation": "history", "messages": payload})
                 else:
                     self.failed.emit("O histórico retornou uma resposta inválida.")
+            elif self.operation == "voice_transcribe":
+                transcript = payload.get("text") if isinstance(payload, dict) else None
+                if not isinstance(transcript, str) or not transcript.strip():
+                    self.failed.emit("A API não retornou uma transcrição válida.")
+                    return
+                self.succeeded.emit({"operation": "voice_transcribe", "text": transcript})
             elif self.operation == "chat":
                 answer = payload.get("response") if isinstance(payload, dict) else None
                 if not isinstance(answer, str) or not answer.strip():
@@ -124,6 +166,11 @@ class AtlasWindow(QMainWindow):
         self._worker: ApiWorker | None = None
         self._pending_operation = ""
         self._settings = QSettings("AtlasAI", "ATLAS")
+        self._audio_output = QAudioOutput(self)
+        self._player = QMediaPlayer(self)
+        self._player.setAudioOutput(self._audio_output)
+        self._audio_buffer: QBuffer | None = None
+        self._last_answer = ""
         self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
@@ -146,6 +193,10 @@ class AtlasWindow(QMainWindow):
         self.input = QLineEdit()
         self.input.setPlaceholderText("Escreva uma mensagem para o ATLAS...")
         self.send_button = QPushButton("Enviar")
+        self.transcribe_button = QPushButton("Transcrever arquivo de áudio")
+        self.speak_button = QPushButton("Ouvir última resposta")
+        self.transcribe_button.clicked.connect(self.transcribe_audio_file)
+        self.speak_button.clicked.connect(self.speak_last_answer)
         self.logout_button = QPushButton("Sair da conta")
         self.memories_button = QPushButton("Memórias")
         self.new_conversation_button = QPushButton("Nova conversa")
@@ -166,6 +217,8 @@ class AtlasWindow(QMainWindow):
             self.transcript,
             self.input,
             self.send_button,
+            self.transcribe_button,
+            self.speak_button,
             self.memories_button,
             self.new_conversation_button,
             self.logout_button,
@@ -175,10 +228,11 @@ class AtlasWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
         self._set_chat_visible(False)
+        self.speak_button.setEnabled(False)
         self.check_api()
 
     def _set_chat_visible(self, visible: bool) -> None:
-        for widget in (self.transcript, self.input, self.send_button):
+        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.speak_button):
             widget.setVisible(visible)
         self.memories_button.setVisible(visible)
         self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
@@ -261,6 +315,44 @@ class AtlasWindow(QMainWindow):
             "chat",
         )
 
+    def transcribe_audio_file(self) -> None:
+        if self._worker is not None:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar áudio para transcrição", "",
+            "Arquivos de áudio (*.mp3 *.wav *.webm *.ogg *.m4a *.mp4 *.aac *.flac *.3gp)",
+        )
+        if not path:
+            return
+        if self._auth_mode == "supabase" and not self._access_token:
+            self.status.setText("Entre na sua conta antes de enviar áudio.")
+            return
+        self.status.setText("Transcrevendo áudio na nuvem...")
+        self._start_worker(ApiWorker("voice_transcribe", audio_path=path, access_token=self._access_token, parent=self), "voice_transcribe")
+
+    def speak_last_answer(self) -> None:
+        if self._worker is not None or not self._last_answer:
+            return
+        if self._auth_mode == "supabase" and not self._access_token:
+            self.status.setText("Entre na sua conta antes de usar a voz.")
+            return
+        self.status.setText("Gerando resposta em áudio...")
+        self._start_worker(ApiWorker("voice_synthesize", message=self._last_answer, access_token=self._access_token, parent=self), "voice_synthesize")
+
+    def _play_audio(self, audio_bytes: bytes) -> None:
+        if self._audio_buffer is not None:
+            self._audio_buffer.close()
+            self._audio_buffer.deleteLater()
+        buffer = QBuffer(self)
+        buffer.setData(QByteArray(audio_bytes))
+        if not buffer.open(QIODevice.ReadOnly):
+            self.status.setText("Não foi possível preparar o áudio para reprodução.")
+            return
+        self._audio_buffer = buffer
+        self._player.setSourceDevice(buffer, QUrl("audio/mpeg"))
+        self._player.play()
+        self.status.setText("Reproduzindo resposta do ATLAS.")
+
     def new_conversation(self) -> None:
         if self._worker is not None or self._auth_mode != "local":
             return
@@ -327,6 +419,16 @@ class AtlasWindow(QMainWindow):
                     label = "Você" if role == "user" else "ATLAS"
                     self.transcript.append(f"<b>{label}:</b> {_safe_html(content)}")
             self.status.setText("Histórico da conversa restaurado.")
+        elif operation == "voice_transcribe":
+            transcript = result.get("text")
+            if isinstance(transcript, str):
+                self.input.setText(transcript)
+                self.input.setFocus()
+                self.status.setText("Transcrição pronta. Revise o texto antes de enviar.")
+        elif operation == "voice_synthesize":
+            audio = result.get("audio")
+            if isinstance(audio, bytes):
+                self._play_audio(audio)
         elif operation == "chat":
             answer = result.get("response")
             conversation_id = result.get("conversation_id")
@@ -334,6 +436,8 @@ class AtlasWindow(QMainWindow):
                 self._conversation_id = conversation_id
                 self._settings.setValue("active_conversation_id", conversation_id)
             if isinstance(answer, str):
+                self._last_answer = answer
+                self.speak_button.setEnabled(bool(answer.strip()))
                 self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
         elif operation == "logout":
             self._set_chat_visible(False)
@@ -367,6 +471,8 @@ class AtlasWindow(QMainWindow):
         self.signup_button.setEnabled(not busy)
         self.send_button.setEnabled(not busy and authenticated)
         self.input.setEnabled(not busy and authenticated)
+        self.transcribe_button.setEnabled(not busy and authenticated)
+        self.speak_button.setEnabled(not busy and authenticated and bool(self._last_answer))
 
 
 def main() -> None:
