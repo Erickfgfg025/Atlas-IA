@@ -38,7 +38,11 @@ class Settings(BaseSettings):
         validation_alias="ATLAS_MAX_AUDIO_UPLOAD_MB",
     )
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        populate_by_name=True,
+    )
 
 
 @lru_cache
