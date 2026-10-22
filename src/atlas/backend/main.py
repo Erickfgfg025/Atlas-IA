@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -130,13 +131,49 @@ async def get_memory_store(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, Any]:
+    """Return non-secret configuration diagnostics; this does not probe external services."""
+    hermes_path = settings.hermes_agent_path.strip()
+    hermes_checkout_ready = bool(
+        hermes_path
+        and (Path(hermes_path).expanduser() / "run_agent.py").is_file()
+    )
+    selected_chat_provider = settings.chat_provider.strip().casefold()
     return {
         "status": "ok",
         "service": "atlas-api",
         "environment": settings.environment,
         "memory_backend": settings.memory_backend,
         "auth_mode": "local" if settings.memory_backend == "local" else "supabase",
+        "providers": {
+            "chat": {
+                "selected": selected_chat_provider,
+                "configured": (
+                    bool(settings.gemini_api_key)
+                    if selected_chat_provider == "gemini"
+                    else bool(settings.openjarvis_base_url and settings.openjarvis_model)
+                    if selected_chat_provider == "openjarvis"
+                    else False
+                ),
+            },
+            "voice_stt": {"configured": bool(settings.gemini_api_key)},
+            "voice_tts": {
+                "configured": bool(
+                    settings.fish_audio_api_key and settings.fish_audio_reference_id
+                )
+            },
+            "hermes": {
+                "enabled": settings.hermes_agent_enabled,
+                "checkout_ready": hermes_checkout_ready,
+                "model_configured": bool(settings.hermes_agent_model.strip()),
+                "configured": (
+                    settings.hermes_agent_enabled
+                    and hermes_checkout_ready
+                    and bool(settings.hermes_agent_model.strip())
+                ),
+            },
+        },
+        "diagnostics_note": "Configuration only; external API connectivity and credentials are not tested.",
     }
 
 
