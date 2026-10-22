@@ -40,3 +40,29 @@ def test_health_marks_unknown_chat_provider_unconfigured(monkeypatch) -> None:
     data = TestClient(main.app).get("/health").json()
 
     assert data["providers"]["chat"] == {"selected": "unknown", "configured": False}
+
+
+
+def test_health_does_not_assume_openjarvis_is_running(monkeypatch) -> None:
+    monkeypatch.setattr(
+        main,
+        "settings",
+        Settings(ATLAS_CHAT_PROVIDER="openjarvis", ATLAS_MEMORY_BACKEND="local"),
+    )
+    data = TestClient(main.app).get("/health").json()
+
+    assert data["providers"]["chat"] == {
+        "selected": "openjarvis",
+        "configured": False,
+    }
+
+
+def test_health_does_not_report_invalid_memory_backend_as_supabase(monkeypatch) -> None:
+    monkeypatch.setattr(
+        main,
+        "settings",
+        Settings(ATLAS_MEMORY_BACKEND="typo"),
+    )
+    data = TestClient(main.app).get("/health").json()
+
+    assert data["auth_mode"] == "invalid"
