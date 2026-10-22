@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 from atlas.backend.auth import verify_supabase_access_token
 from atlas.backend.config import Settings, get_settings
 from atlas.providers.fish_audio import FishAudioProvider, MissingFishAudioConfiguration
@@ -10,6 +11,9 @@ from atlas.providers.gemini_stt import GeminiSpeechToText
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 bearer = HTTPBearer(auto_error=False)
+
+class VoiceSynthesisRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
 
 async def _check_auth(settings: Settings, credentials: HTTPAuthorizationCredentials | None) -> None:
     if settings.memory_backend != "supabase":
@@ -44,17 +48,13 @@ async def transcribe_audio(
 
 @router.post("/synthesize")
 async def synthesize_speech(
-    text: str,
+    request: VoiceSynthesisRequest,
     settings: Settings = Depends(get_settings),
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)] = None,
 ) -> Response:
     await _check_auth(settings, credentials)
-    if not text.strip():
-        raise HTTPException(status_code=422, detail="Informe o texto para sintetizar.")
-    if len(text) > 4000:
-        raise HTTPException(status_code=413, detail="Texto excede o limite de síntese de 4000 caracteres.")
     try:
-        audio_bytes = await FishAudioProvider(settings).synthesize(text)
+        audio_bytes = await FishAudioProvider(settings).synthesize(request.text)
     except MissingFishAudioConfiguration as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
