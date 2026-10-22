@@ -99,7 +99,7 @@ O plano gratuito do Render pode suspender o serviço por inatividade, então nã
 
 ### OpenJarvis: adaptador inicial
 
-O backend pode selecionar o provedor OpenJarvis com `ATLAS_CHAT_PROVIDER=openjarvis`. Configure `OPENJARVIS_BASE_URL` apontando para a base `/v1` de uma instância OpenJarvis acessível ao backend, `OPENJARVIS_MODEL` com um modelo servido e, se a instância exigir autenticação, `OPENJARVIS_API_KEY`. O padrão continua sendo Gemini. O adaptador chama o endpoint compatível `/chat/completions`; ele não instala nem hospeda automaticamente o runtime OpenJarvis. A instância precisa existir separadamente e ser alcançável pela API.
+O backend pode selecionar o provedor OpenJarvis com `ATLAS_CHAT_PROVIDER=openjarvis`. Configure explicitamente `OPENJARVIS_BASE_URL` apontando para a base `/v1` de uma instância OpenJarvis acessível ao backend, `OPENJARVIS_MODEL` com um modelo servido e, se a instância exigir autenticação, `OPENJARVIS_API_KEY`. Não há endpoint local presumido por padrão: a instância precisa existir e ser alcançável pela API. O padrão continua sendo Gemini. O adaptador chama o endpoint compatível `/chat/completions`; ele não instala nem hospeda automaticamente o runtime OpenJarvis. A instância precisa existir separadamente e ser alcançável pela API.
 
 ### Hermes Agent: ponte de execução inicial
 
