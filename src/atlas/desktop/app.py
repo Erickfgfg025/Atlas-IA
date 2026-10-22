@@ -1,5 +1,7 @@
 import html
+import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -18,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-API_BASE = "http://127.0.0.1:8000"
+API_BASE = os.environ.get("ATLAS_API_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def _safe_html(text: str) -> str:
@@ -100,7 +102,7 @@ class ApiWorker(QThread):
                     with open(self.audio_path, "rb") as audio_file:
                         response = httpx.post(
                             f"{API_BASE}/voice/transcribe",
-                            files={"audio": (self.audio_path.rsplit("/", 1)[-1].rsplit("\\\\", 1)[-1], audio_file, self._mime_type(self.audio_path))},
+                            files={"audio": (Path(self.audio_path).name, audio_file, self._mime_type(self.audio_path))},
                             headers=headers,
                             timeout=90.0,
                         )
@@ -349,7 +351,7 @@ class AtlasWindow(QMainWindow):
             self.status.setText("Não foi possível preparar o áudio para reprodução.")
             return
         self._audio_buffer = buffer
-        self._player.setSourceDevice(buffer, QUrl("audio/mpeg"))
+        self._player.setSourceDevice(buffer, QUrl("atlas-response.mp3"))
         self._player.play()
         self.status.setText("Reproduzindo resposta do ATLAS.")
 
