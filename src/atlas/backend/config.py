@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
     chat_provider: str = Field(default="gemini", validation_alias="ATLAS_CHAT_PROVIDER")
-    openjarvis_base_url: str = Field(default="http://127.0.0.1:8001/v1", validation_alias="OPENJARVIS_BASE_URL")
+    openjarvis_base_url: str = Field(default="", validation_alias="OPENJARVIS_BASE_URL")
     openjarvis_model: str = Field(default="default", validation_alias="OPENJARVIS_MODEL")
     openjarvis_api_key: str = Field(default="", validation_alias="OPENJARVIS_API_KEY")
     hermes_agent_enabled: bool = Field(default=False, validation_alias="HERMES_AGENT_ENABLED")
@@ -31,7 +31,12 @@ class Settings(BaseSettings):
     fish_audio_api_key: str = Field(default="", validation_alias="FISH_AUDIO_API_KEY")
     fish_audio_reference_id: str = Field(default="", validation_alias="FISH_AUDIO_REFERENCE_ID")
     fish_audio_model: str = Field(default="s2.1-pro-free", validation_alias="FISH_AUDIO_MODEL")
-    max_audio_upload_mb: int = Field(default=20, ge=1, le=50, validation_alias="ATLAS_MAX_AUDIO_UPLOAD_MB")
+    max_audio_upload_mb: int = Field(
+        default=20,
+        ge=1,
+        le=50,
+        validation_alias="ATLAS_MAX_AUDIO_UPLOAD_MB",
+    )
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
