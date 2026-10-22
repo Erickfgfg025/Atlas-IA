@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from atlas.backend.auth import verify_supabase_access_token
 from atlas.backend.config import Settings, get_settings
@@ -16,6 +16,14 @@ class AgentTaskRequest(BaseModel):
     task: str = Field(min_length=1, max_length=3000)
     approved: bool = False
 
+    @field_validator("task")
+    @classmethod
+    def task_must_contain_non_whitespace(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("A tarefa não pode estar vazia.")
+        return value
+
 
 class AgentTaskResponse(BaseModel):
     agent: str
@@ -26,8 +34,10 @@ async def _check_auth(
     settings: Settings,
     credentials: HTTPAuthorizationCredentials | None,
 ) -> None:
-    if settings.memory_backend != "supabase":
+    if settings.memory_backend == "local":
         return
+    if settings.memory_backend != "supabase":
+        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Autenticação obrigatória.")
     await verify_supabase_access_token(credentials.credentials, settings)
@@ -47,7 +57,7 @@ async def execute_agent_task(
         )
     try:
         provider = HermesAgentProvider(settings)
-        result = await provider.run_task(request.task.strip())
+        result = await provider.run_task(request.task)
     except HermesNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except TimeoutError as exc:
