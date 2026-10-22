@@ -26,6 +26,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTextEdit,
     QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QSizePolicy,
     QWidget,
 )
 
@@ -236,28 +239,134 @@ class AtlasWindow(QMainWindow):
         self.input.returnPressed.connect(self.send_message)
         self.logout_button.clicked.connect(self.logout)
 
-        layout = QVBoxLayout()
-        for widget in (
-            self.status,
-            self.auth_title,
-            self.email,
-            self.password,
-            self.login_button,
-            self.signup_button,
-            self.transcript,
-            self.input,
-            self.send_button,
-            self.transcribe_button,
-            self.record_button,
-            self.speak_button,
-            self.memories_button,
-            self.new_conversation_button,
-            self.logout_button,
-        ):
-            layout.addWidget(widget)
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+        self.setMinimumSize(900, 620)
+        self.resize(1180, 760)
+
+        self.setStyleSheet("""
+            QMainWindow, QWidget { background: #090909; color: #F2F0ED; font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; }
+            QFrame#Sidebar { background: #0C0C0C; border-right: 1px solid #242321; }
+            QFrame#Topbar { background: #090909; border-bottom: 1px solid #242321; }
+            QLabel#Brand { color: #F4F1EC; font-size: 17px; font-weight: 700; letter-spacing: 5px; }
+            QLabel#Eyebrow { color: #85817C; font-size: 9px; font-weight: 600; letter-spacing: 2px; }
+            QLabel#Status { color: #8A8782; font-size: 11px; }
+            QLabel#VoiceState { color: #E87524; font-size: 10px; font-weight: 600; letter-spacing: 3px; padding: 5px; }
+            QPushButton { background: transparent; color: #AAA7A1; border: 1px solid transparent; border-radius: 9px; padding: 10px 12px; text-align: left; }
+            QPushButton:hover { background: #171513; color: #F5F0E9; border-color: #30251D; }
+            QPushButton:disabled { color: #56524E; }
+            QPushButton#Primary { background: #F07822; color: #0B0A09; border: 1px solid #F07822; border-radius: 10px; font-weight: 700; padding: 11px 18px; }
+            QPushButton#Primary:hover { background: #FF8B35; }
+            QLineEdit, QTextEdit { background: #10100F; color: #F4F0EB; border: 1px solid #302B26; border-radius: 12px; padding: 12px; selection-background-color: #A94D17; }
+            QLineEdit:focus, QTextEdit:focus { border: 1px solid #A85A2B; }
+            QLineEdit { min-height: 24px; }
+            QTextEdit { font-size: 14px; line-height: 1.5; }
+        """)
+
+        sidebar = QFrame()
+        sidebar.setObjectName("Sidebar")
+        sidebar.setFixedWidth(210)
+        side = QVBoxLayout(sidebar)
+        side.setContentsMargins(18, 24, 18, 18)
+        side.setSpacing(10)
+        brand = QLabel("A  ATLAS AI")
+        brand.setObjectName("Brand")
+        side.addWidget(brand)
+        tagline = QLabel("SEU ASSISTENTE PESSOAL")
+        tagline.setObjectName("Eyebrow")
+        side.addWidget(tagline)
+        side.addSpacing(30)
+        conversations_nav = QPushButton("◉   CONVERSAS")
+        conversations_nav.setStyleSheet("QPushButton { color: #F07822; background: #17120E; border-left: 2px solid #F07822; }")
+        side.addWidget(conversations_nav)
+        memory_nav = QPushButton("⌘   MEMÓRIA")
+        memory_nav.clicked.connect(self.open_memories)
+        side.addWidget(memory_nav)
+        voice_nav = QPushButton("◖   VOZ")
+        voice_nav.clicked.connect(self.speak_last_answer)
+        side.addWidget(voice_nav)
+        settings_nav = QPushButton("⚙   CONFIGURAÇÕES")
+        settings_nav.clicked.connect(lambda: self.status.setText("As configurações avançadas serão adicionadas nesta área."))
+        side.addWidget(settings_nav)
+        side.addStretch(1)
+        self.memories_button.setText("Memórias")
+        self.memories_button.setVisible(False)
+        self.new_conversation_button.setText("+  Nova conversa")
+        self.logout_button.setText("Sair da conta")
+        side.addWidget(self.status)
+        side.addWidget(self.logout_button)
+
+        workspace = QWidget()
+        work = QVBoxLayout(workspace)
+        work.setContentsMargins(30, 20, 30, 22)
+        work.setSpacing(14)
+
+        topbar = QFrame()
+        topbar.setObjectName("Topbar")
+        top = QHBoxLayout(topbar)
+        top.setContentsMargins(0, 0, 0, 14)
+        title = QLabel("NOVA CONVERSA")
+        title.setObjectName("Eyebrow")
+        top.addWidget(title)
+        top.addStretch(1)
+        top.addWidget(self.new_conversation_button)
+        work.addWidget(topbar)
+
+        auth_panel = QWidget()
+        auth_layout = QVBoxLayout(auth_panel)
+        auth_layout.setContentsMargins(0, 10, 0, 10)
+        auth_layout.setSpacing(10)
+        self.auth_title.setStyleSheet("font-size: 20px; font-weight: 600; color: #F2F0ED; padding: 8px 0;")
+        auth_layout.addWidget(self.auth_title)
+        auth_layout.addWidget(self.email)
+        auth_layout.addWidget(self.password)
+        auth_buttons = QHBoxLayout()
+        self.login_button.setObjectName("Primary")
+        auth_buttons.addWidget(self.login_button)
+        auth_buttons.addWidget(self.signup_button)
+        auth_layout.addLayout(auth_buttons)
+        work.addWidget(auth_panel)
+
+        hero = QWidget()
+        hero_layout = QVBoxLayout(hero)
+        hero_layout.setContentsMargins(0, 0, 0, 0)
+        hero_layout.setSpacing(2)
+        hero_layout.addStretch(1)
+        self.voice_orb.setMinimumHeight(230)
+        self.voice_orb.setMaximumHeight(290)
+        self.voice_orb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        hero_layout.addWidget(self.voice_orb, 2)
+        self.voice_state.setObjectName("VoiceState")
+        hero_layout.addWidget(self.voice_state, 0, Qt.AlignmentFlag.AlignHCenter)
+        brand_center = QLabel("P E N S A R     /     C R I A R     /     E V O L U I R")
+        brand_center.setObjectName("Eyebrow")
+        brand_center.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero_layout.addWidget(brand_center)
+        hero_layout.addStretch(1)
+        work.addWidget(hero, 3)
+
+        self.transcript.setMinimumHeight(110)
+        self.transcript.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        work.addWidget(self.transcript, 2)
+        composer_row = QHBoxLayout()
+        composer_row.setSpacing(10)
+        work.addWidget(self.input)
+        self.input.setPlaceholderText("Digite sua mensagem...")
+        self.send_button.setText("Enviar  ↑")
+        self.send_button.setObjectName("Primary")
+        composer_row.addWidget(self.record_button)
+        composer_row.addWidget(self.transcribe_button)
+        composer_row.addWidget(self.speak_button)
+        composer_row.addStretch(1)
+        composer_row.addWidget(self.send_button)
+        work.addLayout(composer_row)
+        work.addWidget(self.memories_button)
+
+        root = QWidget()
+        root_layout = QHBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+        root_layout.addWidget(sidebar)
+        root_layout.addWidget(workspace, 1)
+        self.setCentralWidget(root)
         self._set_chat_visible(False)
         self.speak_button.setEnabled(False)
         self.check_api()
