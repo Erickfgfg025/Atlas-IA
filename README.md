@@ -85,13 +85,21 @@ Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHI
 
 ### Importante: estado real
 
-A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. A voz está parcialmente implementada no código, mas ainda precisa de validação em ambiente real. O adaptador OpenJarvis foi adicionado para servidores compatíveis com a API OpenAI, mas ainda não foi validado contra uma instância real. Hermes Agent ainda não foi integrado funcionalmente; a sincronização Obsidian também está pendente. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
+A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. A voz está parcialmente implementada no código, mas ainda precisa de validação em ambiente real. O adaptador OpenJarvis foi adicionado para servidores compatíveis com a API OpenAI, mas ainda não foi validado contra uma instância real. A ponte inicial do Hermes Agent foi adicionada, mas não foi testada contra um checkout real nem implantada; a sincronização Obsidian também está pendente. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
 
 O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
 
 ### OpenJarvis: adaptador inicial
 
 O backend pode selecionar o provedor OpenJarvis com `ATLAS_CHAT_PROVIDER=openjarvis`. Configure `OPENJARVIS_BASE_URL` apontando para a base `/v1` de uma instância OpenJarvis acessível ao backend, `OPENJARVIS_MODEL` com um modelo servido e, se a instância exigir autenticação, `OPENJARVIS_API_KEY`. O padrão continua sendo Gemini. O adaptador chama o endpoint compatível `/chat/completions`; ele não instala nem hospeda automaticamente o runtime OpenJarvis. A instância precisa existir separadamente e ser alcançável pela API.
+
+### Hermes Agent: ponte de execução inicial
+
+O endpoint `POST /agent/tasks` chama o Hermes por meio da classe `AIAgent` do checkout oficial. A integração é **opcional e desativada por padrão**: configure `HERMES_AGENT_ENABLED=true`, `HERMES_AGENT_PATH` para o checkout Hermes já preparado e `HERMES_AGENT_MODEL` para o modelo configurado nesse ambiente. As credenciais do provedor usado pelo Hermes devem ficar somente no ambiente do processo Hermes/backend.
+
+A primeira versão habilita exclusivamente o toolset `web`; terminal, edição de arquivos, execução de código e controle de computador não são habilitados. Cada pedido deve incluir `approved: true` para registrar a confirmação explícita do usuário. Em modo Supabase, o endpoint exige token Bearer válido. Em modo local, mantenha a API vinculada a `127.0.0.1`. O timeout de tarefa limita a espera da requisição, mas não substitui isolamento de processo; não habilite ferramentas de sistema sem um worker isolado e sandbox real.
+
+Este adaptador exige que o checkout Hermes e suas dependências estejam preparados separadamente conforme a documentação oficial. Ele não clona nem instala Hermes automaticamente no Render, e não comprova que o agente esteja operacional no ambiente de produção.
 
 ### Voz na nuvem: primeiro incremento
 
