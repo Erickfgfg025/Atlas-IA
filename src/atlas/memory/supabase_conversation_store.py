@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -177,7 +178,7 @@ class SupabaseConversationStore:
         await self._request(
             "PATCH", "atlas_conversations",
             params={"id": f"eq.{conversation_id}", "user_id": f"eq.{self.user_id}"},
-            payload={"updated_at": "now()"},
+            payload={"updated_at": datetime.now(timezone.utc).isoformat()},
             prefer="return=minimal",
         )
         return rows[0]
