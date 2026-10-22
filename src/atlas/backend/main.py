@@ -25,9 +25,11 @@ from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.memory.supabase_conversation_store import SupabaseConversationStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
+from atlas.backend.voice_routes import router as voice_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.2.0")
+app.include_router(voice_router)
 _bearer = HTTPBearer(auto_error=False)
 
 
