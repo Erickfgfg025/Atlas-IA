@@ -3,9 +3,9 @@
 Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via `google-genai`. O projeto começa com memória local SQLite; Supabase fica como opção futura de autenticação e armazenamento em nuvem.
 
 ## Arquitetura atual
-- `src/atlas/desktop/`: interface nativa, chat e diálogo para revisar/editar/excluir memórias.
+- `src/atlas/desktop/`: interface nativa, chat, controles de voz e diálogo para revisar/editar/excluir memórias.
 - `src/atlas/backend/`: API, comando explícito para salvar memória e seleção de modo local ou Supabase.
-- `src/atlas/providers/`: adaptador Gemini.
+- `src/atlas/providers/`: adaptadores Gemini, Gemini STT e Fish Audio TTS.
 - `src/atlas/memory/`: armazenamento SQLite/Supabase e seleção determinística de memórias relevantes.
 - `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras.
 - `supabase/migrations/`: migração de memória com RLS, versionada para uso futuro e ainda não aplicada a um projeto real.
@@ -94,3 +94,11 @@ O plano gratuito do Render pode suspender o serviço por inatividade, então nã
 Foram adicionados os adaptadores de Fish Audio TTS e Gemini STT e as rotas de voz. Para ativar no Render, configure `FISH_AUDIO_API_KEY`, `FISH_AUDIO_REFERENCE_ID`, `GEMINI_API_KEY` e os dados do Supabase. O modelo/ID de voz depende de uma referência disponível na conta Fish Audio. Em modo Supabase, as rotas exigem sessão Bearer válida. O endpoint de transcrição aceita áudio até o limite definido em `ATLAS_MAX_AUDIO_UPLOAD_MB` (20 MB por padrão) e rejeita formatos não permitidos.
 
 A alteração foi registrada no GitHub, mas não foi implantada nem executada contra serviços externos nesta etapa. A compatibilidade exata do ID de voz e as quotas do provedor precisam ser verificadas com as credenciais reais.
+
+
+## Voz no aplicativo desktop
+- **Transcrever arquivo de áudio:** seleciona um arquivo compatível, envia para `POST /voice/transcribe` e coloca a transcrição no campo de mensagem para revisão antes do envio.
+- **Ouvir última resposta:** envia a resposta mais recente para `POST /voice/synthesize` e reproduz o MP3 no aplicativo.
+- O desktop usa `ATLAS_API_URL` para apontar para a API implantada; sem essa variável, usa `http://127.0.0.1:8000`. Defina essa variável no ambiente do Windows para usar o backend do Render. Não coloque chaves Gemini, Fish Audio ou Supabase no cliente.
+- A interface ainda não grava diretamente do microfone; este incremento faz transcrição de arquivos e reprodução de respostas. A gravação contínua e o modo de conversa por voz em tempo real ficam para uma etapa posterior.
+- Para usar as rotas no Render, configure `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, `FISH_AUDIO_API_KEY` e `FISH_AUDIO_REFERENCE_ID`, e aplique as migrations necessárias no Supabase. O aplicativo e a API ainda precisam ser testados e implantados no ambiente real.
