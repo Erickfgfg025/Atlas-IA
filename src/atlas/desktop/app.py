@@ -1,12 +1,20 @@
 import html
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import httpx
-from PySide6.QtCore import QThread, Signal, QSettings, QBuffer, QByteArray, QIODevice, QUrl
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtCore import QThread, Signal, QSettings, QBuffer, QByteArray, QIODevice, QUrl, QTimer
+from PySide6.QtMultimedia import (
+    QAudioInput,
+    QAudioOutput,
+    QMediaCaptureSession,
+    QMediaFormat,
+    QMediaPlayer,
+    QMediaRecorder,
+)
 from PySide6.QtWidgets import QFileDialog
 from atlas.desktop.memories_dialog import MemoryDialog
 from PySide6.QtWidgets import (
@@ -173,6 +181,18 @@ class AtlasWindow(QMainWindow):
         self._player.setAudioOutput(self._audio_output)
         self._audio_buffer: QBuffer | None = None
         self._last_answer = ""
+        self._capture_session = QMediaCaptureSession(self)
+        self._audio_input = QAudioInput(self)
+        self._recorder = QMediaRecorder(self)
+        self._capture_session.setAudioInput(self._audio_input)
+        self._capture_session.setRecorder(self._recorder)
+        self._recording_path = ""
+        self._temporary_recording_path = ""
+        self._is_recording = False
+        self._recording_timeout = QTimer(self)
+        self._recording_timeout.setSingleShot(True)
+        self._recording_timeout.timeout.connect(self._stop_microphone_recording)
+        self._recorder.errorOccurred.connect(self._on_recording_error)
         self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
@@ -196,8 +216,10 @@ class AtlasWindow(QMainWindow):
         self.input.setPlaceholderText("Escreva uma mensagem para o ATLAS...")
         self.send_button = QPushButton("Enviar")
         self.transcribe_button = QPushButton("Transcrever arquivo de áudio")
+        self.record_button = QPushButton("🎙 Gravar pelo microfone")
         self.speak_button = QPushButton("Ouvir última resposta")
         self.transcribe_button.clicked.connect(self.transcribe_audio_file)
+        self.record_button.clicked.connect(self._toggle_microphone_recording)
         self.speak_button.clicked.connect(self.speak_last_answer)
         self.logout_button = QPushButton("Sair da conta")
         self.memories_button = QPushButton("Memórias")
@@ -220,6 +242,7 @@ class AtlasWindow(QMainWindow):
             self.input,
             self.send_button,
             self.transcribe_button,
+            self.record_button,
             self.speak_button,
             self.memories_button,
             self.new_conversation_button,
@@ -234,7 +257,7 @@ class AtlasWindow(QMainWindow):
         self.check_api()
 
     def _set_chat_visible(self, visible: bool) -> None:
-        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.speak_button):
+        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button):
             widget.setVisible(visible)
         self.memories_button.setVisible(visible)
         self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
@@ -331,6 +354,75 @@ class AtlasWindow(QMainWindow):
             return
         self.status.setText("Transcrevendo áudio na nuvem...")
         self._start_worker(ApiWorker("voice_transcribe", audio_path=path, access_token=self._access_token, parent=self), "voice_transcribe")
+
+    def _toggle_microphone_recording(self) -> None:
+        if self._is_recording:
+            self._stop_microphone_recording()
+            return
+        if self._worker is not None:
+            self.status.setText("Aguarde a operação atual terminar antes de gravar.")
+            return
+        if self._auth_mode == "supabase" and not self._access_token:
+            self.status.setText("Entre na sua conta antes de gravar áudio.")
+            return
+        try:
+            handle = tempfile.NamedTemporaryFile(prefix="atlas-mic-", suffix=".wav", delete=False)
+            self._recording_path = handle.name
+            handle.close()
+            media_format = QMediaFormat()
+            media_format.setFileFormat(QMediaFormat.FileFormat.Wave)
+            self._recorder.setMediaFormat(media_format)
+            self._recorder.setOutputLocation(QUrl.fromLocalFile(self._recording_path))
+            self._recorder.record()
+            self._is_recording = True
+            self._temporary_recording_path = self._recording_path
+            self.record_button.setText("■ Parar gravação")
+            self.status.setText("Gravando pelo microfone. Máximo de 60 segundos.")
+            self._recording_timeout.start(60_000)
+        except (OSError, RuntimeError, AttributeError) as exc:
+            self._cleanup_temporary_recording()
+            self.status.setText(f"Não foi possível iniciar o microfone: {exc}")
+
+    def _stop_microphone_recording(self) -> None:
+        if not self._is_recording:
+            return
+        self._recording_timeout.stop()
+        self._is_recording = False
+        self.record_button.setText("🎙 Gravar pelo microfone")
+        self._recorder.stop()
+        self.status.setText("Finalizando gravação...")
+        QTimer.singleShot(700, self._submit_microphone_recording)
+
+    def _submit_microphone_recording(self) -> None:
+        path = self._temporary_recording_path
+        if not path or not os.path.isfile(path) or os.path.getsize(path) < 44:
+            self._cleanup_temporary_recording()
+            self.status.setText("A gravação ficou vazia. Verifique a permissão do microfone e tente novamente.")
+            return
+        self._start_worker(
+            ApiWorker("voice_transcribe", audio_path=path, access_token=self._access_token, parent=self),
+            "voice_transcribe",
+        )
+        self.status.setText("Enviando gravação para transcrição na nuvem...")
+
+    def _on_recording_error(self, error: QMediaRecorder.Error, message: str) -> None:
+        if error == QMediaRecorder.Error.NoError:
+            return
+        self._recording_timeout.stop()
+        self._is_recording = False
+        self.record_button.setText("🎙 Gravar pelo microfone")
+        self._cleanup_temporary_recording()
+        self.status.setText(f"Erro de gravação: {message or 'verifique o microfone e as permissões do Windows.'}")
+
+    def _cleanup_temporary_recording(self) -> None:
+        path = self._temporary_recording_path
+        self._temporary_recording_path = ""
+        self._recording_path = ""
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
     def speak_last_answer(self) -> None:
         if self._worker is not None or not self._last_answer:
@@ -463,6 +555,8 @@ class AtlasWindow(QMainWindow):
         self._update_controls()
 
     def _on_finished(self) -> None:
+        if self._pending_operation == "voice_transcribe" and self._temporary_recording_path:
+            self._cleanup_temporary_recording()
         self._worker = None
         self._update_controls()
 
@@ -474,6 +568,7 @@ class AtlasWindow(QMainWindow):
         self.send_button.setEnabled(not busy and authenticated)
         self.input.setEnabled(not busy and authenticated)
         self.transcribe_button.setEnabled(not busy and authenticated)
+        self.record_button.setEnabled((not busy and authenticated) or self._is_recording)
         self.speak_button.setEnabled(not busy and authenticated and bool(self._last_answer))
 
 
