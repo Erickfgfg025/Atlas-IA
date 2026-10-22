@@ -23,6 +23,7 @@ from atlas.memory.conversation_store import SQLiteConversationStore
 from atlas.memory.retrieval import build_memory_augmented_prompt, select_relevant_memories
 from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
+from atlas.memory.supabase_conversation_store import SupabaseConversationStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
 
 settings = get_settings()
@@ -175,20 +176,33 @@ async def auth_me(
     return AuthMeResponse(user_id=user.user_id)
 
 
-def get_conversation_store(app_settings: Settings = Depends(get_settings)) -> SQLiteConversationStore | None:
-    """Use local SQLite history only in local mode; preserve chat in cloud mode without history."""
-    if app_settings.memory_backend != "local":
-        return None
-    return SQLiteConversationStore(app_settings.local_db_path or None)
+async def get_conversation_store(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(_bearer),
+    ],
+    app_settings: Annotated[Settings, Depends(get_settings)],
+) -> SQLiteConversationStore | SupabaseConversationStore:
+    """Select local SQLite or authenticated, user-scoped Supabase conversation history."""
+    if app_settings.memory_backend == "local":
+        return SQLiteConversationStore(app_settings.local_db_path or None)
+    if app_settings.memory_backend != "supabase":
+        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await verify_supabase_access_token(credentials.credentials, app_settings)
+    return SupabaseConversationStore(app_settings, credentials.credentials, user.user_id)
 
 
 @app.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
-    store: SQLiteConversationStore | None = Depends(get_conversation_store),
+    store: SQLiteConversationStore | SupabaseConversationStore = Depends(get_conversation_store),
 ) -> list[ConversationResponse]:
-    if store is None:
-        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     rows = await store.list_conversations(limit=limit)
     return [ConversationResponse.model_validate(row) for row in rows]
 
