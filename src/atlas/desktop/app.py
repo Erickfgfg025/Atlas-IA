@@ -243,139 +243,167 @@ class AtlasWindow(QMainWindow):
         self.resize(1180, 760)
 
         self.setStyleSheet("""
-            QMainWindow, QWidget { background: #090909; color: #F2F0ED; font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; }
-            QFrame#Sidebar { background: #0C0C0C; border-right: 1px solid #242321; }
-            QFrame#Topbar { background: #090909; border-bottom: 1px solid #242321; }
-            QLabel#Brand { color: #F4F1EC; font-size: 17px; font-weight: 700; letter-spacing: 5px; }
-            QLabel#Eyebrow { color: #85817C; font-size: 9px; font-weight: 600; letter-spacing: 2px; }
-            QLabel#Status { color: #8A8782; font-size: 11px; }
-            QLabel#VoiceState { color: #E87524; font-size: 10px; font-weight: 600; letter-spacing: 3px; padding: 5px; }
-            QPushButton { background: transparent; color: #AAA7A1; border: 1px solid transparent; border-radius: 9px; padding: 10px 12px; text-align: left; }
-            QPushButton:hover { background: #171513; color: #F5F0E9; border-color: #30251D; }
-            QPushButton:disabled { color: #56524E; }
-            QPushButton#Primary { background: #F07822; color: #0B0A09; border: 1px solid #F07822; border-radius: 10px; font-weight: 700; padding: 11px 18px; }
-            QPushButton#Primary:hover { background: #FF8B35; }
-            QLineEdit, QTextEdit { background: #10100F; color: #F4F0EB; border: 1px solid #302B26; border-radius: 12px; padding: 12px; selection-background-color: #A94D17; }
-            QLineEdit:focus, QTextEdit:focus { border: 1px solid #A85A2B; }
-            QLineEdit { min-height: 24px; }
-            QTextEdit { font-size: 14px; line-height: 1.5; }
+            QMainWindow, QWidget { background: #090A0C; color: #F2F4F8; font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; }
+            QFrame#Topbar { background: #0B0C0E; border-bottom: 1px solid #292B30; }
+            QLabel#Brand { color: #F2F4F8; font-family: 'Space Grotesk', 'Segoe UI', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; }
+            QLabel#Eyebrow { color: #858B98; font-size: 9px; font-weight: 600; letter-spacing: 2px; }
+            QLabel#Status { color: #858B98; font-size: 10px; }
+            QLabel#VoiceState { color: #FF6B18; font-size: 9px; font-weight: 600; letter-spacing: 2px; padding: 3px; }
+            QLabel#Headline { color: #F4F6FA; font-family: 'Sora', 'Inter', sans-serif; font-size: 28px; font-weight: 700; }
+            QLabel#Subheadline { color: #939CAB; font-size: 10px; letter-spacing: 2px; }
+            QPushButton { background: #141923; color: #E8EDF5; border: 1px solid #394454; border-radius: 11px; padding: 10px 14px; font-size: 10px; font-weight: 600; }
+            QPushButton:hover { background: #202630; border-color: #596477; }
+            QPushButton:disabled { color: #555D69; border-color: #252A31; }
+            QPushButton#Primary { background: #FF6B18; color: #16100C; border: 1px solid #FF8A45; border-radius: 11px; font-size: 11px; font-weight: 700; padding: 10px 18px; }
+            QPushButton#Primary:hover { background: #FF8540; }
+            QPushButton#Quiet { background: transparent; color: #A3AAB5; border: 1px solid transparent; }
+            QLineEdit, QTextEdit { background: #10141B; color: #F4F6FA; border: 1px solid #303847; border-radius: 12px; padding: 12px; selection-background-color: #A94D17; }
+            QLineEdit:focus, QTextEdit:focus { border: 1px solid #FF6B18; }
+            QLineEdit { min-height: 26px; font-size: 14px; }
+            QTextEdit { font-size: 13px; }
         """)
 
-        sidebar = QFrame()
-        sidebar.setObjectName("Sidebar")
-        sidebar.setFixedWidth(210)
-        side = QVBoxLayout(sidebar)
-        side.setContentsMargins(18, 24, 18, 18)
-        side.setSpacing(10)
-        brand = QLabel("A  ATLAS AI")
-        brand.setObjectName("Brand")
-        side.addWidget(brand)
-        tagline = QLabel("SEU ASSISTENTE PESSOAL")
-        tagline.setObjectName("Eyebrow")
-        side.addWidget(tagline)
-        side.addSpacing(30)
-        conversations_nav = QPushButton("◉   CONVERSAS")
-        conversations_nav.setStyleSheet("QPushButton { color: #F07822; background: #17120E; border-left: 2px solid #F07822; }")
-        side.addWidget(conversations_nav)
-        memory_nav = QPushButton("⌘   MEMÓRIA")
-        memory_nav.clicked.connect(self.open_memories)
-        side.addWidget(memory_nav)
-        voice_nav = QPushButton("◖   VOZ")
-        voice_nav.clicked.connect(self.speak_last_answer)
-        side.addWidget(voice_nav)
-        settings_nav = QPushButton("⚙   CONFIGURAÇÕES")
-        settings_nav.clicked.connect(lambda: self.status.setText("As configurações avançadas serão adicionadas nesta área."))
-        side.addWidget(settings_nav)
-        side.addStretch(1)
-        self.memories_button.setText("Memórias")
-        self.memories_button.setVisible(False)
-        self.new_conversation_button.setText("+  Nova conversa")
-        self.logout_button.setText("Sair da conta")
-        side.addWidget(self.status)
-        side.addWidget(self.logout_button)
-
-        workspace = QWidget()
-        work = QVBoxLayout(workspace)
-        work.setContentsMargins(30, 20, 30, 22)
-        work.setSpacing(14)
+        root = QWidget()
+        root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
         topbar = QFrame()
         topbar.setObjectName("Topbar")
         top = QHBoxLayout(topbar)
-        top.setContentsMargins(0, 0, 0, 14)
-        title = QLabel("NOVA CONVERSA")
-        title.setObjectName("Eyebrow")
-        top.addWidget(title)
+        top.setContentsMargins(28, 15, 28, 15)
+        top.setSpacing(12)
+        mark = QLabel("A")
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mark.setFixedSize(28, 28)
+        mark.setStyleSheet("background:#FF6B18;color:#17100B;border-radius:8px;font-size:17px;font-weight:800;")
+        top.addWidget(mark)
+        brand_stack = QVBoxLayout()
+        brand_stack.setSpacing(0)
+        brand = QLabel("ATLAS AI")
+        brand.setObjectName("Brand")
+        tagline = QLabel("ASSISTENTE PESSOAL")
+        tagline.setObjectName("Eyebrow")
+        brand_stack.addWidget(brand)
+        brand_stack.addWidget(tagline)
+        top.addLayout(brand_stack)
         top.addStretch(1)
-        top.addWidget(self.new_conversation_button)
-        work.addWidget(topbar)
+        self.status.setObjectName("Status")
+        top.addWidget(self.status)
+        self.logout_button.setText("SAIR")
+        self.logout_button.setObjectName("Quiet")
+        top.addWidget(self.logout_button)
+        root_layout.addWidget(topbar)
 
-        auth_panel = QWidget()
-        auth_layout = QVBoxLayout(auth_panel)
-        auth_layout.setContentsMargins(0, 10, 0, 10)
-        auth_layout.setSpacing(10)
-        self.auth_title.setStyleSheet("font-size: 20px; font-weight: 600; color: #F2F0ED; padding: 8px 0;")
-        auth_layout.addWidget(self.auth_title)
-        auth_layout.addWidget(self.email)
-        auth_layout.addWidget(self.password)
-        auth_buttons = QHBoxLayout()
-        self.login_button.setObjectName("Primary")
-        auth_buttons.addWidget(self.login_button)
-        auth_buttons.addWidget(self.signup_button)
-        auth_layout.addLayout(auth_buttons)
-        work.addWidget(auth_panel)
+        workspace = QWidget()
+        work = QVBoxLayout(workspace)
+        work.setContentsMargins(32, 12, 32, 18)
+        work.setSpacing(8)
 
-        hero = QWidget()
-        hero_layout = QVBoxLayout(hero)
-        hero_layout.setContentsMargins(0, 0, 0, 0)
-        hero_layout.setSpacing(2)
-        hero_layout.addStretch(1)
-        self.voice_orb.setMinimumHeight(230)
-        self.voice_orb.setMaximumHeight(290)
+        eyebrow = QLabel("SUA IA PESSOAL")
+        eyebrow.setObjectName("VoiceState")
+        eyebrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        work.addWidget(eyebrow)
+
+        work.addStretch(1)
+        self.voice_orb.setMinimumHeight(250)
+        self.voice_orb.setMaximumHeight(340)
         self.voice_orb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        hero_layout.addWidget(self.voice_orb, 2)
-        self.voice_state.setObjectName("VoiceState")
-        hero_layout.addWidget(self.voice_state, 0, Qt.AlignmentFlag.AlignHCenter)
-        brand_center = QLabel("P E N S A R     /     C R I A R     /     E V O L U I R")
-        brand_center.setObjectName("Eyebrow")
-        brand_center.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hero_layout.addWidget(brand_center)
-        hero_layout.addStretch(1)
-        work.addWidget(hero, 3)
+        work.addWidget(self.voice_orb, 5)
 
-        self.transcript.setMinimumHeight(110)
+        self.auth_title.setText("ENTRE NA SUA CONTA ATLAS")
+        self.auth_title.setStyleSheet("font-size:20px;font-weight:700;color:#F4F6FA;padding:6px;")
+        self.email.setPlaceholderText("E-MAIL")
+        self.password.setPlaceholderText("SENHA")
+        auth_row = QHBoxLayout()
+        auth_row.addWidget(self.email, 2)
+        auth_row.addWidget(self.password, 2)
+        auth_row.addWidget(self.login_button, 1)
+        auth_row.addWidget(self.signup_button, 1)
+        work.addWidget(self.auth_title)
+        work.addLayout(auth_row)
+
+        headline = QLabel("COMO POSSO AJUDAR?")
+        headline.setObjectName("Headline")
+        headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        work.addWidget(headline)
+        subheadline = QLabel("PENSE. CRIE. PLANEJE. RESOLVA.")
+        subheadline.setObjectName("Subheadline")
+        subheadline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        work.addWidget(subheadline)
+
+        self.transcript.setMinimumHeight(100)
+        self.transcript.setMaximumHeight(230)
         self.transcript.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         work.addWidget(self.transcript, 2)
-        composer_row = QHBoxLayout()
-        composer_row.setSpacing(10)
-        work.addWidget(self.input)
-        self.input.setPlaceholderText("Digite sua mensagem...")
-        self.send_button.setText("Enviar  ↑")
-        self.send_button.setObjectName("Primary")
-        composer_row.addWidget(self.record_button)
-        composer_row.addWidget(self.transcribe_button)
-        composer_row.addWidget(self.speak_button)
-        composer_row.addStretch(1)
-        composer_row.addWidget(self.send_button)
-        work.addLayout(composer_row)
-        work.addWidget(self.memories_button)
 
-        root = QWidget()
-        root_layout = QHBoxLayout(root)
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
-        root_layout.addWidget(sidebar)
+        composer = QFrame()
+        composer.setStyleSheet("QFrame { background:#10141B;border:1px solid #303847;border-radius:18px; }")
+        composer_layout = QVBoxLayout(composer)
+        composer_layout.setContentsMargins(16, 10, 10, 10)
+        composer_layout.setSpacing(7)
+        self.input.setPlaceholderText("DIGITE SEU PEDIDO...")
+        self.input.setStyleSheet("QLineEdit { background:transparent;border:0;padding:3px;color:#F4F6FA;font-size:14px; }")
+        composer_layout.addWidget(self.input)
+        composer_divider = QFrame()
+        composer_divider.setFixedHeight(1)
+        composer_divider.setStyleSheet("background:#29313D;border:0;")
+        composer_layout.addWidget(composer_divider)
+        composer_bottom = QHBoxLayout()
+        hint = QLabel("PRESSIONE ENTER PARA ENVIAR")
+        hint.setObjectName("Eyebrow")
+        composer_bottom.addWidget(hint)
+        composer_bottom.addStretch(1)
+        self.record_button.setText("MICROFONE")
+        self.record_button.setObjectName("Quiet")
+        self.transcribe_button.setText("TRANSCRIBIR")
+        self.transcribe_button.setObjectName("Quiet")
+        self.speak_button.setText("OUVIR RESPOSTA")
+        self.speak_button.setObjectName("Quiet")
+        composer_bottom.addWidget(self.record_button)
+        composer_bottom.addWidget(self.transcribe_button)
+        composer_bottom.addWidget(self.speak_button)
+        self.send_button.setText("ENVIAR  ↗")
+        self.send_button.setObjectName("Primary")
+        composer_bottom.addWidget(self.send_button)
+        composer_layout.addLayout(composer_bottom)
+        work.addWidget(composer)
+
+        actions = QHBoxLayout()
+        actions.setSpacing(12)
+        actions.addStretch(1)
+        self.quick_write = QPushButton("ESCREVER TEXTO")
+        self.quick_code = QPushButton("AJUDA COM CÓDIGO")
+        self.quick_plan = QPushButton("CRIAR PLANO")
+        self.quick_write.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a escrever um texto."))
+        self.quick_code.clicked.connect(lambda: self._use_quick_prompt("Ajude-me com código."))
+        self.quick_plan.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a criar um plano."))
+        actions.addWidget(self.quick_write)
+        actions.addWidget(self.quick_code)
+        actions.addWidget(self.quick_plan)
+        actions.addStretch(1)
+        work.addLayout(actions)
+
+        footer = QLabel("ATLAS AI  ·  FEITO PARA VOCÊ")
+        footer.setObjectName("Eyebrow")
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        work.addSpacing(4)
+        work.addWidget(footer)
+        work.addStretch(1)
         root_layout.addWidget(workspace, 1)
         self.setCentralWidget(root)
         self._set_chat_visible(False)
         self.speak_button.setEnabled(False)
         self.check_api()
 
+    def _use_quick_prompt(self, prompt: str) -> None:
+        self.input.setText(prompt)
+        self.input.setFocus()
+
     def _set_chat_visible(self, visible: bool) -> None:
-        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button):
+        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan):
             widget.setVisible(visible)
-        self.memories_button.setVisible(visible)
-        self.new_conversation_button.setVisible(visible and self._auth_mode == "local")
+        self.new_conversation_button.setVisible(False)
         self.logout_button.setVisible(visible and self._auth_mode == "supabase")
         for widget in (
             self.auth_title,
