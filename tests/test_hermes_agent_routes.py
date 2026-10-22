@@ -13,7 +13,7 @@ def make_app(settings: Settings) -> TestClient:
 
 
 def test_hermes_task_requires_explicit_approval() -> None:
-    client = make_app(Settings(memory_backend="local", hermes_agent_enabled=False))
+    client = make_app(Settings(ATLAS_MEMORY_BACKEND="local", HERMES_AGENT_ENABLED=False))
     response = client.post("/agent/tasks", json={"task": "Pesquise novidades do Python"})
     assert response.status_code == 428
     assert "approved=true" in response.json()["detail"]
