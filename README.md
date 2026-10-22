@@ -24,7 +24,7 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - O ATLAS inclui até 12 mensagens recentes no contexto do Gemini; cada mensagem histórica é limitada antes de compor o prompt.
 - O ID da conversa ativa é guardado nas configurações locais do desktop para restaurar o histórico na próxima abertura.
 - Use **Nova conversa** para começar outro assunto sem carregar as mensagens da conversa anterior.
-- O histórico remoto no modo Supabase ainda não está implementado; a API retorna um erro explícito nesse modo, em vez de gravar conversas em um banco local compartilhado.
+- O histórico remoto no modo Supabase usa tabelas próprias e RLS por usuário. A migration `supabase/migrations/20261022000000_cloud_conversations.sql` precisa ser aplicada no projeto Supabase antes do uso em produção.
 ## Modos de operação
 - **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
 - **supabase (opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e migração aplicada ao projeto escolhido.
@@ -85,6 +85,6 @@ Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHI
 
 ### Importante: estado real
 
-A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. A API atual ainda usa SQLite para histórico e possui partes da memória remota já implementadas; histórico remoto, pipeline de voz, integração com agentes e sincronização Obsidian ainda precisam ser implementados e verificados. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
+A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. Pipeline de voz, integração com agentes e sincronização Obsidian ainda precisam ser implementados e verificados. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
 
 O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
