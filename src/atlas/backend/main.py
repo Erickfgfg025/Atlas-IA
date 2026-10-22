@@ -210,10 +210,8 @@ async def list_conversations(
 @app.post("/conversations", response_model=ConversationResponse, status_code=201)
 async def create_conversation(
     request: ConversationCreateRequest,
-    store: SQLiteConversationStore | None = Depends(get_conversation_store),
+    store: SQLiteConversationStore | SupabaseConversationStore = Depends(get_conversation_store),
 ) -> ConversationResponse:
-    if store is None:
-        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     row = await store.create_conversation(request.title)
     return ConversationResponse.model_validate(row)
 
@@ -222,10 +220,8 @@ async def create_conversation(
 async def list_conversation_messages(
     conversation_id: UUID,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    store: SQLiteConversationStore | None = Depends(get_conversation_store),
+    store: SQLiteConversationStore | SupabaseConversationStore = Depends(get_conversation_store),
 ) -> list[ConversationMessageResponse]:
-    if store is None:
-        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     rows = await store.list_messages(conversation_id, limit=limit)
     return [ConversationMessageResponse.model_validate(row) for row in rows]
 
@@ -233,10 +229,8 @@ async def list_conversation_messages(
 @app.delete("/conversations/{conversation_id}", status_code=204)
 async def delete_conversation(
     conversation_id: UUID,
-    store: SQLiteConversationStore | None = Depends(get_conversation_store),
+    store: SQLiteConversationStore | SupabaseConversationStore = Depends(get_conversation_store),
 ) -> Response:
-    if store is None:
-        raise HTTPException(status_code=501, detail="Histórico remoto ainda não está configurado.")
     deleted = await store.delete_conversation(conversation_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversa não encontrada.")
@@ -292,7 +286,7 @@ async def delete_memory(
 async def chat(
     request: ChatRequest,
     store: Any = Depends(get_memory_store),
-    conversations: SQLiteConversationStore | None = Depends(get_conversation_store),
+    conversations: SQLiteConversationStore | SupabaseConversationStore = Depends(get_conversation_store),
 ) -> ChatResponse:
     message = request.message.strip()
     conversation_id = request.conversation_id
