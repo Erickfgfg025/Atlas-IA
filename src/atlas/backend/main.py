@@ -144,7 +144,11 @@ def health() -> dict[str, Any]:
         "service": "atlas-api",
         "environment": settings.environment,
         "memory_backend": settings.memory_backend,
-        "auth_mode": "local" if settings.memory_backend == "local" else "supabase",
+        "auth_mode": (
+            settings.memory_backend
+            if settings.memory_backend in {"local", "supabase"}
+            else "invalid"
+        ),
         "providers": {
             "chat": {
                 "selected": selected_chat_provider,
