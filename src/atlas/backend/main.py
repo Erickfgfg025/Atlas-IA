@@ -25,6 +25,7 @@ from atlas.memory.sqlite_store import SQLiteMemoryStore
 from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.memory.supabase_conversation_store import SupabaseConversationStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
+from atlas.providers.openjarvis import OpenJarvisProvider, MissingOpenJarvisConfiguration
 from atlas.backend.voice_routes import router as voice_router
 
 settings = get_settings()
@@ -359,11 +360,21 @@ async def chat(
                 + "\n"
                 + prompt
             )
-        provider = GeminiProvider(settings.gemini_api_key, settings.gemini_model)
+        chat_provider = settings.chat_provider.strip().casefold()
+        if chat_provider == "openjarvis":
+            provider = OpenJarvisProvider(
+                settings.openjarvis_base_url,
+                settings.openjarvis_model,
+                settings.openjarvis_api_key,
+            )
+        elif chat_provider == "gemini":
+            provider = GeminiProvider(settings.gemini_api_key, settings.gemini_model)
+        else:
+            raise HTTPException(status_code=503, detail="ATLAS_CHAT_PROVIDER inválido.")
         answer = await provider.generate(prompt)
         if conversations is not None and conversation_id is not None:
             await conversations.add_message(conversation_id, "assistant", answer[:20000])
-    except MissingGeminiConfiguration as exc:
+    except (MissingGeminiConfiguration, MissingOpenJarvisConfiguration) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except HTTPException:
         raise
