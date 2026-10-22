@@ -16,8 +16,10 @@ class VoiceSynthesisRequest(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
 
 async def _check_auth(settings: Settings, credentials: HTTPAuthorizationCredentials | None) -> None:
-    if settings.memory_backend != "supabase":
+    if settings.memory_backend == "local":
         return
+    if settings.memory_backend != "supabase":
+        raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Autenticação obrigatória.")
     await verify_supabase_access_token(credentials.credentials, settings)
