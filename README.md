@@ -63,6 +63,10 @@ pytest
 ruff check .
 ```
 
+## Diagnóstico de provedores
+
+O endpoint público `GET /health` também informa, sem revelar valores secretos, se os provedores de chat, transcrição, síntese de voz e Hermes parecem configurados. O campo `diagnostics_note` é importante: isso é uma verificação de configuração, não um teste de conectividade, validade das chaves ou disponibilidade dos serviços externos. O status geral `ok` indica que a API respondeu, não que todas as integrações estejam funcionando.
+
 ## Limites atuais
 - Nenhum deploy ou migração remota foi executado.
 - A recuperação de memórias usa sobreposição de termos, sem embeddings.
