@@ -23,3 +23,9 @@ services:
         sync: false
       - key: FISH_AUDIO_API_KEY
         sync: false
+      - key: FISH_AUDIO_REFERENCE_ID
+        sync: false
+      - key: FISH_AUDIO_MODEL
+        value: s1
+      - key: ATLAS_MAX_AUDIO_UPLOAD_MB
+        value: "20"
