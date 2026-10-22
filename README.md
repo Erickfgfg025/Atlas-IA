@@ -67,7 +67,7 @@ ruff check .
 - Nenhum deploy ou migração remota foi executado.
 - A recuperação de memórias usa sobreposição de termos, sem embeddings.
 - O modo Supabase foi testado com mocks, não com um projeto real.
-- Voz e automação do Windows ainda não foram implementadas.
+- A voz está parcialmente implementada: transcrição cloud de arquivos e gravação curta pelo microfone no desktop, além de reprodução TTS. A conversa contínua em tempo real e a automação autorizada do Windows ainda não estão implementadas.
 
 
 ## Arquitetura cloud-first (em implementação)
@@ -85,7 +85,7 @@ Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHI
 
 ### Importante: estado real
 
-A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. Pipeline de voz, integração com agentes e sincronização Obsidian ainda precisam ser implementados e verificados. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
+A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. A voz está parcialmente implementada no código, mas ainda precisa de validação em ambiente real. OpenJarvis e Hermes Agent ainda não foram integrados funcionalmente; a sincronização Obsidian também está pendente. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
 
 O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
 
