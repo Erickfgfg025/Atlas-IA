@@ -1,15 +1,14 @@
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from atlas.backend.agent_routes import router
-from atlas.backend.config import Settings
-from fastapi import FastAPI
+from atlas.backend.config import Settings, get_settings
 
 
 def make_app(settings: Settings) -> TestClient:
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides.clear()
-    app.dependency_overrides[__import__("atlas.backend.config", fromlist=["get_settings"]).get_settings] = lambda: settings
+    app.dependency_overrides[get_settings] = lambda: settings
     return TestClient(app)
 
 
