@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: atlas-ai-api
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn atlas.backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ATLAS_ENVIRONMENT
+        value: production
+      - key: ATLAS_API_HOST
+        value: 0.0.0.0
+      - key: ATLAS_MEMORY_BACKEND
+        value: supabase
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: FISH_AUDIO_API_KEY
+        sync: false
