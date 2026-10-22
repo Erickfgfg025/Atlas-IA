@@ -19,13 +19,16 @@ class HermesAgentProvider:
         self.settings = settings
         if not settings.hermes_agent_enabled:
             raise HermesNotConfigured(
-                "Hermes Agent está desativado. Configure HERMES_AGENT_ENABLED=true após preparar o runtime."
+                "Hermes Agent está desativado. Configure HERMES_AGENT_ENABLED=true "
+                "após preparar o runtime."
             )
         if not settings.hermes_agent_model.strip():
             raise HermesNotConfigured("Configure HERMES_AGENT_MODEL no ambiente do backend.")
         root = settings.hermes_agent_path.strip()
         if not root:
-            raise HermesNotConfigured("Configure HERMES_AGENT_PATH para o checkout preparado do Hermes.")
+            raise HermesNotConfigured(
+                "Configure HERMES_AGENT_PATH para o checkout preparado do Hermes."
+            )
         path = Path(root).expanduser().resolve()
         if not path.is_dir() or not (path / "run_agent.py").is_file():
             raise HermesNotConfigured(
@@ -75,6 +78,6 @@ class HermesAgentProvider:
             )
         except TimeoutError as exc:
             raise TimeoutError(
-                "O tempo de espera do Hermes terminou. A thread subjacente pode continuar ativa; "
+                    "O tempo de espera do Hermes terminou. A thread subjacente pode continuar ativa; "
                 "por isso, o runtime deve ser executado em worker isolado para produção."
             ) from exc
