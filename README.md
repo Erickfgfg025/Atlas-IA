@@ -76,8 +76,8 @@ A direção do projeto agora é manter o núcleo do ATLAS na nuvem para que tare
 
 - **Render:** API FastAPI; o blueprint inicial está em `render.yaml`.
 - **Supabase:** autenticação e persistência remota de memórias, conversas e mensagens.
-- **Fish Audio:** síntese de voz (TTS), chamada exclusivamente pelo backend.
-- **STT cloud:** reconhecimento de fala, integrado por adaptador no backend.
+- **Fish Audio:** endpoint `POST /voice/synthesize` recebe JSON `{"text":"..."}` e retorna áudio MP3; a chave fica exclusivamente no backend.
+- **STT cloud:** endpoint `POST /voice/transcribe` recebe um arquivo multipart `audio` e devolve `{"text":"transcrição"}` usando Gemini.
 - **Hermes Agent / OpenJarvis:** ferramentas e modelos isolados por adaptadores.
 - **Obsidian:** conhecimento em Markdown. Um vault guardado apenas no disco do PC não pode ser acessado quando o PC estiver desligado; é necessária sincronização cloud.
 
@@ -88,3 +88,9 @@ Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHI
 A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. Pipeline de voz, integração com agentes e sincronização Obsidian ainda precisam ser implementados e verificados. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
 
 O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
+
+### Voz na nuvem: primeiro incremento
+
+Foram adicionados os adaptadores de Fish Audio TTS e Gemini STT e as rotas de voz. Para ativar no Render, configure `FISH_AUDIO_API_KEY`, `FISH_AUDIO_REFERENCE_ID`, `GEMINI_API_KEY` e os dados do Supabase. O modelo/ID de voz depende de uma referência disponível na conta Fish Audio. Em modo Supabase, as rotas exigem sessão Bearer válida. O endpoint de transcrição aceita áudio até o limite definido em `ATLAS_MAX_AUDIO_UPLOAD_MB` (20 MB por padrão) e rejeita formatos não permitidos.
+
+A alteração foi registrada no GitHub, mas não foi implantada nem executada contra serviços externos nesta etapa. A compatibilidade exata do ID de voz e as quotas do provedor precisam ser verificadas com as credenciais reais.
