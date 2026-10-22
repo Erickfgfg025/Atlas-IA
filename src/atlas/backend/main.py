@@ -26,11 +26,13 @@ from atlas.memory.supabase_store import SupabaseMemoryStore
 from atlas.memory.supabase_conversation_store import SupabaseConversationStore
 from atlas.providers.gemini import GeminiProvider, MissingGeminiConfiguration
 from atlas.providers.openjarvis import OpenJarvisProvider, MissingOpenJarvisConfiguration
+from atlas.backend.agent_routes import router as agent_router
 from atlas.backend.voice_routes import router as voice_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.2.0")
 app.include_router(voice_router)
+app.include_router(agent_router)
 _bearer = HTTPBearer(auto_error=False)
 
 
