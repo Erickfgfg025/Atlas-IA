@@ -63,6 +63,10 @@ pytest
 ruff check .
 ```
 
+## Segurança das rotas de voz
+
+As rotas `POST /voice/transcribe` e `POST /voice/synthesize` agora falham de forma fechada se `ATLAS_MEMORY_BACKEND` tiver um valor inválido. O modo `local` continua sem autenticação remota; o modo `supabase` exige token Bearer validado. Isso evita que uma configuração desconhecida seja tratada silenciosamente como acesso local. Os testes correspondentes estão em `tests/test_voice_auth_config.py`.
+
 ## Diagnóstico de provedores
 
 O endpoint público `GET /health` também informa, sem revelar valores secretos, se os provedores de chat, transcrição, síntese de voz e Hermes parecem configurados. O campo `diagnostics_note` é importante: isso é uma verificação de configuração, não um teste de conectividade, validade das chaves ou disponibilidade dos serviços externos. O status geral `ok` indica que a API respondeu, não que todas as integrações estejam funcionando.
