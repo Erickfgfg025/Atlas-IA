@@ -104,3 +104,56 @@ def test_add_message_refuses_conversation_not_owned_by_user():
             await client.aclose()
 
     assert asyncio.run(run()) is None
+
+
+
+def test_list_messages_caps_limit_and_scopes_query_to_user() -> None:
+    from uuid import UUID
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=[])
+
+    async def run() -> list[dict]:
+        store, client = make_store(handler)
+        try:
+            return await store.list_messages(
+                UUID("00000000-0000-0000-0000-000000000005"),
+                limit=999,
+            )
+        finally:
+            await client.aclose()
+
+    assert asyncio.run(run()) == []
+    assert len(requests) == 1
+    params = requests[0].url.params
+    assert params["limit"] == "100"
+    assert params["user_id"] == "eq.user-123"
+    assert params["conversation_id"] == "eq.00000000-0000-0000-0000-000000000005"
+
+
+def test_add_message_rejects_invalid_role_before_network_call() -> None:
+    from uuid import UUID
+
+    def unexpected_request(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("No HTTP request should be made for an invalid role")
+
+    async def run() -> None:
+        store, client = make_store(unexpected_request)
+        try:
+            await store.add_message(
+                UUID("00000000-0000-0000-0000-000000000006"),
+                "system",
+                "Não deve ser persistido",
+            )
+        finally:
+            await client.aclose()
+
+    try:
+        asyncio.run(run())
+    except ValueError as exc:
+        assert "role must be" in str(exc)
+    else:
+        raise AssertionError("Invalid message role should raise ValueError")
