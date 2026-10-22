@@ -29,3 +29,11 @@ services:
         value: s2.1-pro-free
       - key: ATLAS_MAX_AUDIO_UPLOAD_MB
         value: "20"
+      - key: HERMES_AGENT_ENABLED
+        value: "false"
+      - key: HERMES_AGENT_PATH
+        sync: false
+      - key: HERMES_AGENT_MODEL
+        sync: false
+      - key: HERMES_AGENT_TASK_TIMEOUT_SECONDS
+        value: "90"
