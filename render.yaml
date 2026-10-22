@@ -26,6 +26,6 @@ services:
       - key: FISH_AUDIO_REFERENCE_ID
         sync: false
       - key: FISH_AUDIO_MODEL
-        value: s1
+        value: s2.1-pro-free
       - key: ATLAS_MAX_AUDIO_UPLOAD_MB
         value: "20"
