@@ -68,3 +68,23 @@ ruff check .
 - A recuperação de memórias usa sobreposição de termos, sem embeddings.
 - O modo Supabase foi testado com mocks, não com um projeto real.
 - Voz e automação do Windows ainda não foram implementadas.
+
+
+## Arquitetura cloud-first (em implementação)
+
+A direção do projeto agora é manter o núcleo do ATLAS na nuvem para que tarefas remotas continuem disponíveis com o PC desligado. O aplicativo Windows será o cliente de interface, microfone, reprodução de voz e automação local quando o computador estiver ligado.
+
+- **Render:** API FastAPI; o blueprint inicial está em `render.yaml`.
+- **Supabase:** autenticação e persistência remota de memórias, conversas e mensagens.
+- **Fish Audio:** síntese de voz (TTS), chamada exclusivamente pelo backend.
+- **STT cloud:** reconhecimento de fala, integrado por adaptador no backend.
+- **Hermes Agent / OpenJarvis:** ferramentas e modelos isolados por adaptadores.
+- **Obsidian:** conhecimento em Markdown. Um vault guardado apenas no disco do PC não pode ser acessado quando o PC estiver desligado; é necessária sincronização cloud.
+
+Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHITECTURE.md).
+
+### Importante: estado real
+
+A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. A API atual ainda usa SQLite para histórico e possui partes da memória remota já implementadas; histórico remoto, pipeline de voz, integração com agentes e sincronização Obsidian ainda precisam ser implementados e verificados. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
+
+O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
