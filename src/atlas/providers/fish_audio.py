@@ -11,7 +11,7 @@ class FishAudioProvider:
     def __init__(self, settings: Settings) -> None:
         self.api_key = settings.fish_audio_api_key.strip()
         self.reference_id = settings.fish_audio_reference_id.strip()
-        self.model = settings.fish_audio_model.strip() or "s1"
+        self.model = settings.fish_audio_model.strip() or "s2.1-pro-free"
         if not self.api_key or not self.reference_id:
             raise MissingFishAudioConfiguration("Configure FISH_AUDIO_API_KEY e FISH_AUDIO_REFERENCE_ID no backend.")
 
