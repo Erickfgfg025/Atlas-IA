@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from atlas.backend import main
+from atlas.backend.config import Settings, get_settings
 from atlas.backend.main import get_memory_store
-from atlas.providers.gemini import MissingGeminiConfiguration
 
 client = TestClient(main.app)
 
@@ -66,13 +66,13 @@ def test_visual_scene_rejects_invalid_model_json(monkeypatch):
         main.app.dependency_overrides.clear()
 
     assert response.status_code == 502
-    assert response.json()["detail"] == "Não foi possível gerar a cena visual."
+    assert response.json()["detail"] == (
+        "Não foi possível gerar uma cena visual válida. Tente reformular o pedido."
+    )
 
 
-def test_visual_scene_requires_auth_in_supabase_mode(monkeypatch):
+def test_visual_scene_requires_auth_in_supabase_mode():
     main.app.dependency_overrides.clear()
-    from atlas.backend.config import Settings, get_settings
-
     cloud_settings = Settings(
         ATLAS_MEMORY_BACKEND="supabase",
         SUPABASE_URL="https://atlas-test.supabase.co",
