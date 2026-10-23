@@ -18,6 +18,7 @@ from PySide6.QtMultimedia import (
 from PySide6.QtWidgets import QFileDialog
 from atlas.desktop.memories_dialog import MemoryDialog
 from atlas.desktop.voice_orb import VoiceOrb
+from atlas.desktop.visual_canvas import VisualCanvas
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -86,6 +87,13 @@ class ApiWorker(QThread):
                     f"{API_BASE}/conversations/{self.conversation_id}/messages",
                     headers=headers,
                     timeout=10.0,
+                )
+            elif self.operation == "visual_scene":
+                response = httpx.post(
+                    f"{API_BASE}/visual/scene",
+                    json={"prompt": self.message},
+                    headers=headers,
+                    timeout=90.0,
                 )
             elif self.operation == "chat":
                 response = httpx.post(
@@ -160,6 +168,11 @@ class ApiWorker(QThread):
                     self.failed.emit("A API não retornou uma transcrição válida.")
                     return
                 self.succeeded.emit({"operation": "voice_transcribe", "text": transcript})
+            elif self.operation == "visual_scene":
+                if isinstance(payload, dict) and isinstance(payload.get("elements"), list):
+                    self.succeeded.emit({"operation": "visual_scene", "scene": payload})
+                else:
+                    self.failed.emit("A API retornou uma cena visual inválida.")
             elif self.operation == "chat":
                 answer = payload.get("response") if isinstance(payload, dict) else None
                 if not isinstance(answer, str) or not answer.strip():
@@ -205,6 +218,7 @@ class AtlasWindow(QMainWindow):
 
         self.status = QLabel("ATLAS API: verificando...")
         self.voice_orb = VoiceOrb(self)
+        self.visual_canvas = VisualCanvas(self)
         self.voice_state = QLabel("PRONTO PARA CONVERSAR")
         self.voice_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.voice_state.setStyleSheet("color: #8FA7C7; letter-spacing: 2px; font-size: 9px; font-weight: 600;")
@@ -332,6 +346,9 @@ class AtlasWindow(QMainWindow):
         subheadline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         work.addWidget(subheadline)
 
+        self.visual_canvas.setMaximumHeight(380)
+        work.addWidget(self.visual_canvas, 2)
+
         self.transcript.setMinimumHeight(100)
         self.transcript.setMaximumHeight(230)
         self.transcript.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -375,12 +392,15 @@ class AtlasWindow(QMainWindow):
         self.quick_write = QPushButton("ESCREVER TEXTO")
         self.quick_code = QPushButton("AJUDA COM CÓDIGO")
         self.quick_plan = QPushButton("CRIAR PLANO")
+        self.quick_visual = QPushButton("CRIAR ANIMAÇÃO")
+        self.quick_visual.clicked.connect(self.create_visual_scene)
         self.quick_write.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a escrever um texto."))
         self.quick_code.clicked.connect(lambda: self._use_quick_prompt("Ajude-me com código."))
         self.quick_plan.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a criar um plano."))
         actions.addWidget(self.quick_write)
         actions.addWidget(self.quick_code)
         actions.addWidget(self.quick_plan)
+        actions.addWidget(self.quick_visual)
         actions.addStretch(1)
         work.addLayout(actions)
 
@@ -401,7 +421,7 @@ class AtlasWindow(QMainWindow):
         self.input.setFocus()
 
     def _set_chat_visible(self, visible: bool) -> None:
-        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan):
+        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan, self.quick_visual):
             widget.setVisible(visible)
         self.new_conversation_button.setVisible(False)
         self.logout_button.setVisible(visible and self._auth_mode == "supabase")
@@ -469,6 +489,10 @@ class AtlasWindow(QMainWindow):
         if self._auth_mode == "supabase" and not self._access_token:
             return
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
+        if any(term in message.casefold() for term in ("crie uma anima", "cria uma anima", "motion design", "gere uma cena", "crie uma cena", "visualize", "animação de", "animacao de", "desenhe", "gere um diagrama")):
+            self._start_visual_scene(message)
+            self.input.clear()
+            return
         self._set_voice_state("thinking", "PENSANDO")
         self.input.clear()
         self.send_button.setEnabled(False)
@@ -482,6 +506,32 @@ class AtlasWindow(QMainWindow):
                 parent=self,
             ),
             "chat",
+        )
+
+    def create_visual_scene(self) -> None:
+        prompt = self.input.text().strip()
+        if not prompt:
+            self.status.setText("Descreva a animação que deseja criar.")
+            self.input.setFocus()
+            return
+        if self._worker is not None:
+            self.status.setText("Aguarde a operação atual terminar.")
+            return
+        self.transcript.append(f"<b>Você · CANVAS:</b> {_safe_html(prompt)}")
+        self.input.clear()
+        self._start_visual_scene(prompt)
+
+    def _start_visual_scene(self, prompt: str) -> None:
+        if self._auth_mode == "supabase" and not self._access_token:
+            self.status.setText("Entre na sua conta para gerar cenas com IA.")
+            return
+        self.visual_canvas.show()
+        self.visual_canvas.hint.setText("A IA está planejando a composição...")
+        self.status.setText("Gerando elementos e movimentos com a IA...")
+        self._set_voice_state("thinking", "CRIANDO CENA")
+        self._start_worker(
+            ApiWorker("visual_scene", message=prompt, access_token=self._access_token, parent=self),
+            "visual_scene",
         )
 
     def transcribe_audio_file(self) -> None:
@@ -679,6 +729,15 @@ class AtlasWindow(QMainWindow):
             audio = result.get("audio")
             if isinstance(audio, bytes):
                 self._play_audio(audio)
+        elif operation == "visual_scene":
+            scene = result.get("scene")
+            if isinstance(scene, dict):
+                try:
+                    self.visual_canvas.set_scene(scene)
+                    self.status.setText("Cena criada. A animação está rodando no canvas.")
+                    self._set_voice_state("idle", "CENA EM MOVIMENTO")
+                except (TypeError, ValueError) as exc:
+                    self.status.setText(f"Não foi possível exibir a cena: {exc}")
         elif operation == "chat":
             answer = result.get("response")
             conversation_id = result.get("conversation_id")
