@@ -1,25 +1,69 @@
-# Entrega do Atlas AI para Windows
+# Atlas AI para Windows: instalação e configuração
 
-## Decisões da primeira versão
+Este guia prioriza o caminho simples: baixar o instalador, instalar e abrir o aplicativo. Não é necessário instalar Python ou compilar o projeto para usar uma versão já empacotada.
 
-- Formato: instalador `.exe` criado com Inno Setup.
-- Aplicativo: PySide6 empacotado pelo PyInstaller em modo `onedir`; o instalador reúne o executável e seus arquivos.
-- Arquitetura: cloud-first. O cliente empacotado usa a API do Render configurada em `build/windows/runtime_hook.py`. O desenvolvimento local continua usando `http://127.0.0.1:8000`.
-- Assinatura: não assinada nesta etapa. O Windows pode exibir o aviso do SmartScreen ou “Editor desconhecido”. Isso não significa, por si só, que o arquivo contenha malware.
-- Segredos: nenhuma chave Gemini, Fish Audio, Supabase service role ou outra credencial privada deve ser incluída no cliente. As credenciais dos provedores ficam no backend.
+## Instalação rápida (recomendada)
 
-## Gerar o instalador no GitHub Actions
+### 1. Baixar o instalador
 
-1. Abra **Actions → Windows installer** no repositório.
-2. Selecione **Run workflow** para gerar um artefato de validação a partir da branch padrão.
-3. Aguarde o job terminar e baixe o artefato `atlas-ai-windows-installer`.
-4. Para publicar uma versão, crie e envie uma tag de versão, por exemplo `v0.1.0`. A execução da tag anexa o instalador a um GitHub Release.
+1. Abra [Windows installer no GitHub Actions](https://github.com/Erickfgfg025/Atlas-IA/actions/workflows/windows-installer.yml).
+2. Clique na execução mais recente com resultado **Success**.
+3. Na parte inferior da página, encontre **Artifacts** e baixe **atlas-ai-windows-installer**.
+4. O download é um arquivo ZIP. Extraia-o e localize o instalador `.exe`.
 
-O workflow instala as dependências no Windows, gera a pasta `dist/AtlasAI`, compila o instalador com Inno Setup e verifica que um arquivo `.exe` foi produzido. O checksum SHA-256 aparece nos logs do job.
+Se não aparecer **Artifacts**, confirme que a execução terminou com sucesso e que o artefato ainda não expirou. Os artefatos de validação são temporários.
 
-## Build local (Windows)
+### 2. Instalar
 
-Com Python 3.12 instalado:
+1. Dê dois cliques no arquivo `Atlas-AI-Setup-...-Windows.exe`.
+2. Siga o assistente de instalação.
+3. Se quiser, marque a opção para criar um atalho na área de trabalho.
+4. Ao terminar, deixe marcada a opção para abrir o Atlas AI ou abra-o pelo menu Iniciar.
+
+O instalador ainda não é assinado digitalmente, então o SmartScreen pode mostrar “Editor desconhecido”. Só execute instaladores baixados do repositório oficial do Atlas AI e confirme a origem antes de permitir a execução.
+
+### 3. Usar o aplicativo
+
+O Atlas AI usa arquitetura cloud-first: a interface é executada no Windows e conversa com a API hospedada no Render. Em condições normais, não é necessário iniciar um servidor manualmente.
+
+- É necessária conexão com a internet.
+- A disponibilidade dos recursos depende da API e dos serviços externos configurados no backend.
+- O serviço gratuito do Render pode suspender-se após inatividade. A primeira chamada depois disso pode demorar.
+- Não coloque chaves Gemini, tokens Fish Audio ou credenciais Supabase dentro do aplicativo ou em arquivos públicos. As credenciais dos provedores devem ficar no backend.
+
+## Se não funcionar
+
+### O aplicativo não abre
+- Tente iniciar pelo menu Iniciar.
+- Se o Windows bloquear o arquivo, confirme que ele veio do repositório oficial.
+- Baixe e extraia novamente o ZIP caso o download tenha sido interrompido.
+
+### Abre, mas não responde
+- Verifique a conexão com a internet.
+- Abra [o status da API](https://atlas-ai-api-a58n.onrender.com/health). Se a API estiver acordando no plano gratuito, aguarde um pouco e tente novamente.
+- Se o status não carregar ou o aplicativo continuar sem resposta, o problema pode estar na API ou em um serviço externo, não necessariamente na instalação local.
+
+### Login ou recursos de IA falham
+- A configuração de provedores é feita no backend. Não adicione chaves privadas no cliente Windows.
+- O login depende de como a autenticação está configurada na versão implantada.
+- Anote a mensagem de erro e a etapa em que ocorreu. Nunca compartilhe tokens ou chaves.
+
+## Baixar o artefato atual
+
+Para o artefato de instalador verificado em 23/10/2026, abra a [execução do Windows installer](https://github.com/Erickfgfg025/Atlas-IA/actions/runs/40035369295), desça até **Artifacts** e baixe **atlas-ai-windows-installer**. O artefato pode expirar conforme a retenção do GitHub.
+
+## Para quem desenvolve: gerar o instalador
+
+1. Abra [Actions → Windows installer](https://github.com/Erickfgfg025/Atlas-IA/actions/workflows/windows-installer.yml).
+2. Clique em **Run workflow** e execute a branch padrão.
+3. Aguarde a execução terminar com **Success**.
+4. Baixe `atlas-ai-windows-installer` em **Artifacts**.
+
+O workflow empacota o aplicativo com PyInstaller, compila o instalador com Inno Setup, verifica se o `.exe` foi produzido e calcula SHA-256 nos logs. Para publicar uma versão, envie uma tag `v*`; o workflow cria um GitHub Release com o instalador.
+
+### Build local (Windows)
+
+Requer Python 3.12 e Inno Setup 6. Em PowerShell, na raiz do repositório:
 
 ```powershell
 python -m pip install --upgrade pip
@@ -30,17 +74,8 @@ New-Item -ItemType Directory -Force -Path dist/installer
 & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" build/windows/atlas-ai.iss
 ```
 
-## Checklist antes de distribuir
+## Limitações e checklist de lançamento
 
-- Confirmar que o serviço Render está ativo e que `/health` responde.
-- Testar login/cadastro se o modo Supabase estiver habilitado.
-- Testar chat, histórico, memórias, microfone, transcrição e reprodução de áudio em uma instalação limpa do Windows.
-- Verificar que o instalador não contém arquivos `.env`, chaves ou bancos locais de desenvolvimento.
-- Testar instalação, abertura, desinstalação e atualização manual.
-- Conferir o aviso de primeira execução do Windows em um computador que não tenha o ambiente de desenvolvimento.
+O sucesso do workflow confirma que o pacote foi construído, mas não substitui testes funcionais em um Windows limpo. Antes de uma distribuição mais ampla, teste instalação, abertura, login, chat, histórico, memórias, microfone, transcrição, reprodução de áudio, atualização e desinstalação.
 
-O workflow constrói e verifica a existência do instalador, mas isso não substitui testes funcionais no Windows nem comprova disponibilidade da API e dos serviços externos. O plano gratuito do Render pode suspender o serviço após inatividade.
-
-## Assinatura digital
-
-A primeira versão não usa certificado pago. Antes de uma distribuição pública mais ampla, considere assinar o executável e o instalador com um certificado de assinatura de código. Não armazene certificados ou senhas de assinatura no repositório.
+A primeira versão não usa certificado pago de assinatura de código. Não armazene certificados, senhas de assinatura, `.env` ou credenciais privadas no repositório.
