@@ -180,7 +180,7 @@ class ApiWorker(QThread):
                     return
                 self.succeeded.emit({"operation": "chat", "response": answer, "conversation_id": payload.get("conversation_id")})
         except httpx.HTTPError:
-            self.failed.emit("Não foi possível conectar à API local.")
+            self.failed.emit("Não foi possível conectar ao Atlas. Verifique sua internet.")
         except (TypeError, ValueError):
             self.failed.emit("A API retornou uma resposta inválida.")
 
@@ -462,10 +462,26 @@ class AtlasWindow(QMainWindow):
                 if self._conversation_id:
                     self._load_history()
             else:
-                self._set_chat_visible(False)
-                self.status.setText("Entre na sua conta Supabase para continuar.")
+                if self._access_token:
+                    try:
+                        auth_response = httpx.get(f"{API_BASE}/auth/me", headers={"Authorization": f"Bearer {self._access_token}"}, timeout=8.0)
+                        if auth_response.is_success:
+                            self._set_chat_visible(True)
+                            self.status.setText("Sessão ATLAS restaurada · dados sincronizados")
+                            if self._conversation_id:
+                                self._load_history()
+                        else:
+                            self._access_token = ""
+                            self._settings.remove("access_token")
+                            self._set_chat_visible(False)
+                            self.status.setText("Sua sessão expirou. Entre novamente.")
+                    except httpx.HTTPError:
+                        self.status.setText("Sem conexão. A sessão será verificada quando voltar.")
+                else:
+                    self._set_chat_visible(False)
+                    self.status.setText("Entre ou crie sua conta ATLAS para sincronizar seus dados.")
         except (httpx.HTTPError, ValueError):
-            self.status.setText("ATLAS API: offline. Inicie o backend local.")
+            self.status.setText("Sem conexão com o Atlas. Verifique sua internet e tente novamente.")
 
     def _start_worker(self, worker: ApiWorker, operation: str) -> None:
         if self._worker is not None:
@@ -673,17 +689,14 @@ class AtlasWindow(QMainWindow):
             self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
 
     def new_conversation(self) -> None:
-        if self._worker is not None or self._auth_mode not in {"local", "supabase_single_user"}:
+        if self._worker is not None or self._auth_mode not in {"local", "supabase_single_user", "supabase"}:
             return
-        self._start_worker(ApiWorker("new_conversation", parent=self), "new_conversation")
+        self._start_worker(ApiWorker("new_conversation", access_token=self._access_token, parent=self), "new_conversation")
 
     def _load_history(self) -> None:
-        if self._worker is not None or not self._conversation_id or self._auth_mode not in {"local", "supabase_single_user"}:
+        if self._worker is not None or not self._conversation_id or self._auth_mode not in {"local", "supabase_single_user", "supabase"}:
             return
-        self._start_worker(
-            ApiWorker("history", conversation_id=self._conversation_id, parent=self),
-            "history",
-        )
+        self._start_worker(ApiWorker("history", conversation_id=self._conversation_id, access_token=self._access_token, parent=self), "history")
 
     def open_memories(self) -> None:
         if self._worker is not None:
@@ -696,6 +709,9 @@ class AtlasWindow(QMainWindow):
             return
         token = self._access_token
         self._access_token = ""
+        self._settings.remove("access_token")
+        self._settings.remove("active_conversation_id")
+        self._conversation_id = ""
         self.status.setText("Encerrando sessão...")
         self._start_worker(ApiWorker("logout", access_token=token, parent=self), "logout")
 
@@ -708,6 +724,7 @@ class AtlasWindow(QMainWindow):
             token = result.get("access_token")
             if isinstance(token, str) and token:
                 self._access_token = token
+                self._settings.setValue("access_token", token)
                 user_id = result.get("user_id")
                 suffix = f" · usuário {user_id}" if isinstance(user_id, str) else ""
                 self.status.setText(f"ATLAS conectado{suffix}")
