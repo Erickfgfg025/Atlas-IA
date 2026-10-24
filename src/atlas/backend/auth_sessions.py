@@ -89,6 +89,14 @@ async def _post_auth(
                 status_code=400,
                 detail="O Supabase recusou a solicitação. Verifique o e-mail, a senha e as configurações de autenticação.",
             )
+        if response.status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "O limite temporário de envio de e-mails do Supabase foi atingido. "
+                    "Aguarde antes de tentar criar outra conta ou reenviar a confirmação."
+                ),
+            )
         if response.status_code not in (200, 201):
             raise HTTPException(
                 status_code=503,
