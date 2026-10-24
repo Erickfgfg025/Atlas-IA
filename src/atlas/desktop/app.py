@@ -547,6 +547,11 @@ class AtlasWindow(QMainWindow):
                 self._access_token = ""
                 self._set_chat_visible(True)
                 self.status.setText("ATLAS conectado · nuvem pública · sem histórico privado")
+                self.record_button.setVisible(False)
+                self.transcribe_button.setVisible(False)
+                self.speak_button.setVisible(False)
+                self.new_conversation_button.setVisible(False)
+                self.logout_button.setVisible(False)
             elif self._auth_mode == "activation_code":
                 if self._access_token:
                     try:
