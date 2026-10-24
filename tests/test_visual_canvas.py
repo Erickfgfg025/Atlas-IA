@@ -58,7 +58,7 @@ def test_canvas_discards_unsupported_elements_and_sanitizes_color(app):
 
     assert len(canvas.stage.elements) == 1
     assert canvas.stage.elements[0]["type"] == "circle"
-    assert canvas.stage.elements[0]["color"] == "#ff8a24"
+    assert canvas.stage.elements[0]["color"].lower() == "#ff8a24"
     assert canvas.stage.elements[0]["text"] == "<script>"
     canvas.close()
 

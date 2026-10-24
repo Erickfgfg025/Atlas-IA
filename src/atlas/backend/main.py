@@ -1,6 +1,7 @@
 from datetime import datetime
 import ipaddress
 import json
+import hmac
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
@@ -15,6 +16,10 @@ from atlas.backend.auth import (
     require_authenticated_user,
     verify_supabase_access_token,
     desktop_supabase_no_login_enabled,
+    activation_enabled,
+    is_activation_token,
+    verify_activation_token,
+    issue_activation_token,
 )
 from atlas.backend.auth_sessions import (
     PasswordCredentials,
@@ -96,6 +101,10 @@ class AuthMeResponse(BaseModel):
     user_id: str
 
 
+class ActivationRequest(BaseModel):
+    code: str = Field(min_length=8, max_length=200)
+
+
 class AuthSessionResponse(BaseModel):
     access_token: str | None = None
     expires_in: int | None = None
@@ -153,6 +162,9 @@ async def get_memory_store(
             detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if is_activation_token(credentials.credentials):
+        session = verify_activation_token(credentials.credentials, app_settings)
+        return SupabaseMemoryStore(app_settings, app_settings.supabase_service_role_key.strip(), session.user_id)
     session = await verify_supabase_access_token(credentials.credentials, app_settings)
     return SupabaseMemoryStore(app_settings, credentials.credentials, session.user_id)
 
@@ -172,7 +184,9 @@ def health() -> dict[str, Any]:
         "environment": settings.environment,
         "memory_backend": settings.memory_backend,
         "auth_mode": (
-            "supabase_single_user"
+            "activation_code"
+            if activation_enabled(settings)
+            else "supabase_single_user"
             if desktop_supabase_no_login_enabled(settings)
             else settings.memory_backend
             if settings.memory_backend in {"local", "supabase"}
@@ -216,6 +230,21 @@ async def auth_signup(credentials: PasswordCredentials) -> AuthSessionResponse:
         credentials.email, credentials.password, settings
     )
     return AuthSessionResponse(**session.model_dump())
+
+
+@app.post("/auth/activate", response_model=AuthSessionResponse)
+async def auth_activate(request: ActivationRequest) -> AuthSessionResponse:
+    current = get_settings()
+    if not activation_enabled(current):
+        raise HTTPException(status_code=503, detail="Ativação por código não está configurada no servidor.")
+    if not hmac.compare_digest(request.code.strip(), current.activation_code.strip()):
+        raise HTTPException(status_code=401, detail="Código de ativação inválido.")
+    return AuthSessionResponse(
+        access_token=issue_activation_token(current),
+        expires_in=15552000,
+        user_id=current.atlas_owner_user_id.strip(),
+        confirmation_required=False,
+    )
 
 
 @app.post("/auth/login", response_model=AuthSessionResponse)
@@ -275,6 +304,9 @@ async def get_conversation_store(
             detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if is_activation_token(credentials.credentials):
+        user = verify_activation_token(credentials.credentials, app_settings)
+        return SupabaseConversationStore(app_settings, app_settings.supabase_service_role_key.strip(), user.user_id)
     user = await verify_supabase_access_token(credentials.credentials, app_settings)
     return SupabaseConversationStore(app_settings, credentials.credentials, user.user_id)
 

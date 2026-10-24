@@ -117,3 +117,66 @@ def test_passwordless_desktop_mode_requires_service_role_key():
         SUPABASE_SERVICE_ROLE_KEY="",
     )
     assert not desktop_supabase_no_login_enabled(settings)
+
+
+
+def activation_settings(**overrides) -> Settings:
+    values = {
+        "ATLAS_MEMORY_BACKEND": "supabase",
+        "ATLAS_OWNER_USER_ID": "owner-uuid",
+        "ATLAS_ACTIVATION_CODE": "test-activation-code-123",
+        "ATLAS_ACTIVATION_SECRET": "s" * 40,
+        "SUPABASE_URL": "https://atlas-test.supabase.co",
+        "SUPABASE_KEY": "public-test-key",
+        "SUPABASE_SERVICE_ROLE_KEY": "server-only-service-role",
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def test_activation_token_round_trip_and_owner_scope():
+    from atlas.backend.auth import issue_activation_token, verify_activation_token
+
+    settings = activation_settings()
+    token = issue_activation_token(settings)
+    user = verify_activation_token(token, settings)
+    assert token.startswith("atlas1.")
+    assert user.user_id == "owner-uuid"
+
+
+def test_activation_token_rejects_modified_signature():
+    from atlas.backend.auth import issue_activation_token, verify_activation_token
+
+    settings = activation_settings()
+    token = issue_activation_token(settings)
+    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    with pytest.raises(HTTPException) as error:
+        verify_activation_token(tampered, settings)
+    assert error.value.status_code == 401
+
+
+def test_activation_token_rejects_different_owner():
+    from atlas.backend.auth import issue_activation_token, verify_activation_token
+
+    token = issue_activation_token(activation_settings())
+    with pytest.raises(HTTPException) as error:
+        verify_activation_token(token, activation_settings(ATLAS_OWNER_USER_ID="another-owner"))
+    assert error.value.status_code == 401
+
+
+def test_activation_token_rejects_expired_token():
+    from atlas.backend.auth import issue_activation_token, verify_activation_token
+
+    settings = activation_settings()
+    token = issue_activation_token(settings, lifetime_seconds=-1)
+    with pytest.raises(HTTPException) as error:
+        verify_activation_token(token, settings)
+    assert error.value.status_code == 401
+
+
+def test_activation_mode_requires_long_secret_and_server_credentials():
+    from atlas.backend.auth import activation_enabled
+
+    assert activation_enabled(activation_settings())
+    assert not activation_enabled(activation_settings(ATLAS_ACTIVATION_SECRET="too-short"))
+    assert not activation_enabled(activation_settings(SUPABASE_SERVICE_ROLE_KEY=""))
