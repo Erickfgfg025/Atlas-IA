@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from atlas.backend import main
-from atlas.backend.auth import AuthenticatedUser, require_authenticated_user, verify_supabase_access_token
+from atlas.backend.auth import AuthenticatedUser, desktop_supabase_no_login_enabled, require_authenticated_user, verify_supabase_access_token
 from atlas.backend.config import Settings
 
 client = TestClient(main.app)
@@ -77,3 +77,43 @@ def test_verifier_fails_closed_when_supabase_is_not_configured():
         asyncio.run(verify_supabase_access_token("token", settings))
 
     assert error.value.status_code == 503
+
+
+
+def test_passwordless_desktop_mode_requires_single_user_supabase_configuration():
+    settings = Settings(
+        ATLAS_MEMORY_BACKEND="supabase",
+        ATLAS_DESKTOP_NO_LOGIN=True,
+        ATLAS_OWNER_USER_ID="owner-uuid",
+        ATLAS_API_HOST="127.0.0.1",
+        SUPABASE_URL="https://atlas-test.supabase.co",
+        SUPABASE_KEY="public-test-key",
+        SUPABASE_SERVICE_ROLE_KEY="server-only-service-role",
+    )
+    assert desktop_supabase_no_login_enabled(settings)
+
+
+def test_passwordless_desktop_mode_rejects_non_loopback_binding():
+    settings = Settings(
+        ATLAS_MEMORY_BACKEND="supabase",
+        ATLAS_DESKTOP_NO_LOGIN=True,
+        ATLAS_OWNER_USER_ID="owner-uuid",
+        ATLAS_API_HOST="0.0.0.0",
+        SUPABASE_URL="https://atlas-test.supabase.co",
+        SUPABASE_KEY="public-test-key",
+        SUPABASE_SERVICE_ROLE_KEY="server-only-service-role",
+    )
+    assert not desktop_supabase_no_login_enabled(settings)
+
+
+def test_passwordless_desktop_mode_requires_service_role_key():
+    settings = Settings(
+        ATLAS_MEMORY_BACKEND="supabase",
+        ATLAS_DESKTOP_NO_LOGIN=True,
+        ATLAS_OWNER_USER_ID="owner-uuid",
+        ATLAS_API_HOST="127.0.0.1",
+        SUPABASE_URL="https://atlas-test.supabase.co",
+        SUPABASE_KEY="public-test-key",
+        SUPABASE_SERVICE_ROLE_KEY="",
+    )
+    assert not desktop_supabase_no_login_enabled(settings)
