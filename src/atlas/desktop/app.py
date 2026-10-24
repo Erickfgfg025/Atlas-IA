@@ -760,6 +760,8 @@ class AtlasWindow(QMainWindow):
                 self.transcript.clear()
                 self._set_chat_visible(True)
                 self.input.setFocus()
+                if self._conversation_id:
+                    self._load_history()
             elif operation == "signup" and result.get("confirmation_required"):
                 self.status.setText(
                     "Conta criada. Confirme o e-mail e depois entre com sua senha."
