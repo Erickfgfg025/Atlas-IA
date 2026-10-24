@@ -107,7 +107,7 @@ class ApiWorker(QThread):
                     json={"code": self.email},
                     timeout=15.0,
                 )
-            elif self.operation in ("login", "signup"):
+            elif self.operation in ("login", "signup", "activate"):
                 response = httpx.post(
                     f"{API_BASE}/auth/{self.operation}",
                     json={"email": self.email, "password": self.password},
