@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     auth_email_redirect_url: str = Field(default="", validation_alias="ATLAS_AUTH_EMAIL_REDIRECT_URL")
     atlas_owner_user_id: str = Field(default="", validation_alias="ATLAS_OWNER_USER_ID")
     desktop_no_login: bool = Field(default=False, validation_alias="ATLAS_DESKTOP_NO_LOGIN")
+    activation_code: str = Field(default="", validation_alias="ATLAS_ACTIVATION_CODE")
+    activation_secret: str = Field(default="", validation_alias="ATLAS_ACTIVATION_SECRET")
     fish_audio_api_key: str = Field(default="", validation_alias="FISH_AUDIO_API_KEY")
     fish_audio_reference_id: str = Field(default="", validation_alias="FISH_AUDIO_REFERENCE_ID")
     fish_audio_model: str = Field(default="s2.1-pro-free", validation_alias="FISH_AUDIO_MODEL")
