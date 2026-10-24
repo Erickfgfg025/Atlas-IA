@@ -180,7 +180,7 @@ class ApiWorker(QThread):
                 detail = payload.get("detail", "A solicitação falhou.") if isinstance(payload, dict) else "A solicitação falhou."
                 self.failed.emit(str(detail))
                 return
-            if self.operation in ("login", "signup"):
+            if self.operation in ("login", "signup", "activate"):
                 if not isinstance(payload, dict):
                     self.failed.emit("Resposta de autenticação inválida.")
                     return
