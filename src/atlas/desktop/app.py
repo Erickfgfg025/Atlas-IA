@@ -445,11 +445,14 @@ class AtlasWindow(QMainWindow):
                 self.status.setText("ATLAS conectado · memória e histórico locais")
                 if self._conversation_id:
                     self._load_history()
+            elif self._auth_mode == "supabase_single_user":
+                self._set_chat_visible(True)
+                self.status.setText("ATLAS conectado · Supabase · modo pessoal sem login")
+                if self._conversation_id:
+                    self._load_history()
             else:
-                self.status.setText(
-                    "API exige autenticação remota. Configure ATLAS_MEMORY_BACKEND=local "
-                    "para usar o Atlas sem conta."
-                )
+                self._set_chat_visible(False)
+                self.status.setText("Entre na sua conta Supabase para continuar.")
         except (httpx.HTTPError, ValueError):
             self.status.setText("ATLAS API: offline. Inicie o backend local.")
 
@@ -664,7 +667,7 @@ class AtlasWindow(QMainWindow):
         self._start_worker(ApiWorker("new_conversation", parent=self), "new_conversation")
 
     def _load_history(self) -> None:
-        if self._worker is not None or not self._conversation_id or self._auth_mode != "local":
+        if self._worker is not None or not self._conversation_id or self._auth_mode not in {"local", "supabase_single_user"}:
             return
         self._start_worker(
             ApiWorker("history", conversation_id=self._conversation_id, parent=self),
