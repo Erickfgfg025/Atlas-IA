@@ -27,6 +27,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; GroupDescription: "Atalhos adicionais:"; Flags: unchecked
+Name: "startup"; Description: "Iniciar o Atlas AI automaticamente ao entrar no Windows"; GroupDescription: "Inicialização:"
 
 [Files]
 Source: "..\..\dist\AtlasAI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -34,6 +35,7 @@ Source: "..\..\dist\AtlasAI\*"; DestDir: "{app}"; Flags: ignoreversion recursesu
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startup
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Abrir {#AppName}"; Flags: postinstall nowait skipifsilent
