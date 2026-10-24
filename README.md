@@ -1,6 +1,6 @@
 # ATLAS AI
 
-Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via `google-genai`. O projeto começa com memória local SQLite; Supabase fica como opção futura de autenticação e armazenamento em nuvem.
+Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via `google-genai`. O projeto oferece memória local SQLite e integração Supabase para memória e histórico em nuvem. O modo pessoal sem login é restrito ao backend local.
 
 ## Arquitetura atual
 - `src/atlas/desktop/`: interface nativa, chat, controles de voz e diálogo para revisar/editar/excluir memórias.
@@ -8,7 +8,7 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - `src/atlas/providers/`: adaptadores Gemini, OpenJarvis, Hermes Agent, Gemini STT e Fish Audio TTS.
 - `src/atlas/memory/`: armazenamento SQLite/Supabase e seleção determinística de memórias relevantes.
 - `src/atlas/windows_agent/`: fronteira futura para ferramentas locais seguras.
-- `supabase/migrations/`: migração de memória com RLS, versionada para uso futuro e ainda não aplicada a um projeto real.
+- `supabase/migrations/`: migrações de memória e histórico com RLS, versionadas no GitHub; as tabelas `atlas_memories`, `atlas_conversations` e `atlas_conversation_messages` já foram criadas no projeto Supabase Atlas AI.
 - `tests/`: testes sem credenciais externas.
 
 ## Memória
@@ -47,7 +47,7 @@ Por padrão, `ATLAS_MEMORY_BACKEND=local`. O SQLite é criado automaticamente no
 
 Para ativar o modo remoto com login, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use a chave `service_role` no desktop.
 
-Para o modo pessoal sem tela de login, mantenha `ATLAS_MEMORY_BACKEND=supabase`, defina `ATLAS_DESKTOP_NO_LOGIN=true` e informe `ATLAS_OWNER_USER_ID` com o UUID do usuário existente no Supabase Auth. Configure `SUPABASE_SERVICE_ROLE_KEY` com a chave JWT legada `service_role`, somente no `.env` local do backend. Essa chave ignora RLS, por isso esse modo só funciona com o backend local, vinculado a `127.0.0.1`; a API também rejeita requisições de clientes remotos. Não use esse modo em Render ou em qualquer backend público. Aplique as migrations de memória e histórico antes de usar. Reinicie o backend depois de alterar `.env`.
+Para o modo pessoal sem tela de login, execute ` .\\scripts\\configure_supabase_desktop.ps1` a partir da raiz do repositório depois de criar `.env`. O script configura a URL e a chave publicável do projeto Atlas AI, ativa `ATLAS_MEMORY_BACKEND=supabase`, `ATLAS_DESKTOP_NO_LOGIN=true` e `ATLAS_API_HOST=127.0.0.1`, e pede o UUID do usuário Supabase e a chave JWT legada `service_role` (entrada oculta). A chave administrativa fica somente no `.env` local do backend e ignora RLS. Por isso esse modo só funciona com o backend local e não deve ser usado no Render nem em qualquer backend público. As tabelas de memória e histórico já foram criadas no projeto Supabase Atlas AI. Reinicie o backend depois da configuração.
 
 ## Executar
 Terminal 1:
@@ -75,7 +75,7 @@ As rotas `POST /voice/transcribe` e `POST /voice/synthesize` agora falham de for
 O endpoint público `GET /health` também informa, sem revelar valores secretos, se os provedores de chat, transcrição, síntese de voz e Hermes parecem configurados. O campo `diagnostics_note` é importante: isso é uma verificação de configuração, não um teste de conectividade, validade das chaves ou disponibilidade dos serviços externos. O status geral `ok` indica que a API respondeu, não que todas as integrações estejam funcionando.
 
 ## Limites atuais
-- Nenhum deploy ou migração remota foi executado.
+- As migrações de memória e histórico foram aplicadas ao projeto Supabase Atlas AI e as três tabelas foram verificadas. O modo sem login ainda precisa ser configurado no `.env` do computador e validado com a chave administrativa.
 - A recuperação de memórias usa sobreposição de termos, sem embeddings.
 - O modo Supabase foi testado com mocks, não com um projeto real.
 - A voz está parcialmente implementada: transcrição cloud de arquivos e gravação curta pelo microfone no desktop, além de reprodução TTS. A conversa contínua em tempo real e a automação autorizada do Windows ainda não estão implementadas.
@@ -96,7 +96,7 @@ Documento de arquitetura e etapas: [docs/CLOUD_ARCHITECTURE.md](docs/CLOUD_ARCHI
 
 ### Importante: estado real
 
-A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. A migration precisa ser aplicada e a integração remota precisa ser validada no projeto real. A voz está parcialmente implementada no código, mas ainda precisa de validação em ambiente real. O adaptador OpenJarvis foi adicionado para servidores compatíveis com a API OpenAI, mas ainda não foi validado contra uma instância real. A ponte inicial do Hermes Agent foi adicionada, mas não foi testada contra um checkout real nem implantada; a sincronização Obsidian também está pendente. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
+A arquitetura cloud-first e o blueprint de Render foram registrados no repositório, mas isso **não significa que o serviço já foi implantado**. O código da API agora inclui um adaptador de histórico Supabase por usuário, além do armazenamento de memórias já existente. As migrações de memória e histórico foram aplicadas ao projeto Supabase Atlas AI; a configuração local e a integração remota ainda precisam ser validadas no computador. A voz está parcialmente implementada no código, mas ainda precisa de validação em ambiente real. O adaptador OpenJarvis foi adicionado para servidores compatíveis com a API OpenAI, mas ainda não foi validado contra uma instância real. A ponte inicial do Hermes Agent foi adicionada, mas não foi testada contra um checkout real nem implantada; a sincronização Obsidian também está pendente. O deploy requer configurar as variáveis secretas no Render e aplicar/revisar as migrações no projeto Supabase.
 
 O plano gratuito do Render pode suspender o serviço por inatividade, então não há garantia de execução 24/7 sem limites. O backend pode executar tarefas cloud enquanto o PC estiver desligado, mas não pode acessar o microfone, alto-falantes ou controlar o próprio PC desligado.
 
