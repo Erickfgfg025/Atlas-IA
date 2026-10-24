@@ -37,6 +37,13 @@ O workflow `.github/workflows/windows-installer.yml` compila o executável num r
 
 O serviço Render precisa de `ATLAS_ENVIRONMENT=production`, `ATLAS_MEMORY_BACKEND=supabase`, `SUPABASE_URL`, `SUPABASE_KEY` publicável e `GEMINI_API_KEY`. Configure o cadastro por e-mail e as regras de confirmação no Supabase Auth.
 
+### Confirmação de e-mail e redirecionamento
+
+- No Render, configure `ATLAS_AUTH_EMAIL_REDIRECT_URL` com uma URL HTTPS pública que pertença ao fluxo de confirmação realmente implementado. Não use `localhost` como destino para usuários do aplicativo Windows.
+- No Supabase Dashboard → Authentication → URL Configuration, adicione essa mesma URL em `Redirect URLs`. O valor `Site URL` também deve apontar para um destino público válido, não para `localhost` em produção.
+- Se ainda não existir uma página pública de callback, use temporariamente uma página HTTPS pública adequada como destino e instrua o usuário a voltar ao aplicativo e entrar novamente após confirmar o e-mail. A URL de callback, sozinha, não cria uma sessão automática no aplicativo Windows.
+- Após alterar variáveis do Render, faça um redeploy e teste cadastro, confirmação e login com uma conta de teste.
+
 Não configure `ATLAS_DESKTOP_NO_LOGIN=true`, `ATLAS_OWNER_USER_ID` nem `SUPABASE_SERVICE_ROLE_KEY` para o fluxo de clientes.
 
 ## Limites antes de anunciar o produto
