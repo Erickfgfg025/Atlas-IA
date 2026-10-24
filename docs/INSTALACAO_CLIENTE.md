@@ -4,7 +4,7 @@
 
 1. Baixe `Atlas-AI-Setup-0.1.0-Windows.exe` na GitHub Release oficial do Atlas AI.
 2. Abra o instalador e siga as instruções do Windows.
-3. Escolha se deseja criar um atalho na área de trabalho.
+3. Escolha se deseja criar um atalho na área de trabalho. A opção de iniciar automaticamente ao entrar no Windows vem ativada por padrão e pode ser desmarcada durante a instalação.
 4. Abra o Atlas AI pelo menu Iniciar ou pelo atalho.
 5. Entre com sua conta ou selecione **Criar conta** e informe seu e-mail e uma senha com pelo menos 8 caracteres.
 6. Se o cadastro solicitar confirmação por e-mail, confirme a mensagem recebida e depois entre no aplicativo.
