@@ -434,8 +434,11 @@ class AtlasWindow(QMainWindow):
             response = httpx.get(f"{API_BASE}/health", timeout=2.0)
             response.raise_for_status()
             payload = response.json()
+            reported_auth_mode = payload.get("auth_mode")
             self._auth_mode = (
-                "local" if payload.get("auth_mode") == "local" else "supabase"
+                reported_auth_mode
+                if reported_auth_mode in {"local", "supabase", "supabase_single_user"}
+                else "supabase"
             )
             if self._auth_mode == "local":
                 self._set_chat_visible(True)
@@ -656,7 +659,7 @@ class AtlasWindow(QMainWindow):
             self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
 
     def new_conversation(self) -> None:
-        if self._worker is not None or self._auth_mode != "local":
+        if self._worker is not None or self._auth_mode not in {"local", "supabase_single_user"}:
             return
         self._start_worker(ApiWorker("new_conversation", parent=self), "new_conversation")
 
@@ -782,7 +785,7 @@ class AtlasWindow(QMainWindow):
 
     def _update_controls(self) -> None:
         busy = self._worker is not None
-        authenticated = self._auth_mode == "local" or bool(self._access_token)
+        authenticated = self._auth_mode in {"local", "supabase_single_user"} or bool(self._access_token)
         self.login_button.setEnabled(not busy)
         self.signup_button.setEnabled(not busy)
         self.send_button.setEnabled(not busy and authenticated)
