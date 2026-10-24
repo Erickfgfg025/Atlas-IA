@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     supabase_url: str = Field(default="", validation_alias="SUPABASE_URL")
     supabase_key: str = Field(default="", validation_alias="SUPABASE_KEY")
     supabase_service_role_key: str = Field(default="", validation_alias="SUPABASE_SERVICE_ROLE_KEY")
+    auth_email_redirect_url: str = Field(default="", validation_alias="ATLAS_AUTH_EMAIL_REDIRECT_URL")
     atlas_owner_user_id: str = Field(default="", validation_alias="ATLAS_OWNER_USER_ID")
     desktop_no_login: bool = Field(default=False, validation_alias="ATLAS_DESKTOP_NO_LOGIN")
     fish_audio_api_key: str = Field(default="", validation_alias="FISH_AUDIO_API_KEY")
