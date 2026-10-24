@@ -12,6 +12,7 @@ from atlas.backend.auth import (
     AuthenticatedUser,
     require_authenticated_user,
     verify_supabase_access_token,
+    desktop_supabase_no_login_enabled,
 )
 from atlas.backend.auth_sessions import (
     PasswordCredentials,
@@ -122,17 +123,19 @@ async def get_memory_store(
     if app_settings.memory_backend != "supabase":
         raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
     if credentials is None or credentials.scheme.lower() != "bearer":
+        if desktop_supabase_no_login_enabled(app_settings):
+            return SupabaseMemoryStore(
+                app_settings,
+                app_settings.supabase_service_role_key.strip(),
+                app_settings.atlas_owner_user_id.strip(),
+            )
         raise HTTPException(
             status_code=401,
             detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     session = await verify_supabase_access_token(credentials.credentials, app_settings)
-    return SupabaseMemoryStore(
-        app_settings,
-        credentials.credentials,
-        session.user_id,
-    )
+    return SupabaseMemoryStore(app_settings, credentials.credentials, session.user_id)
 
 
 @app.get("/health")
@@ -150,7 +153,9 @@ def health() -> dict[str, Any]:
         "environment": settings.environment,
         "memory_backend": settings.memory_backend,
         "auth_mode": (
-            settings.memory_backend
+            "supabase_single_user"
+            if desktop_supabase_no_login_enabled(settings)
+            else settings.memory_backend
             if settings.memory_backend in {"local", "supabase"}
             else "invalid"
         ),
@@ -240,6 +245,12 @@ async def get_conversation_store(
     if app_settings.memory_backend != "supabase":
         raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
     if credentials is None or credentials.scheme.lower() != "bearer":
+        if desktop_supabase_no_login_enabled(app_settings):
+            return SupabaseConversationStore(
+                app_settings,
+                app_settings.supabase_service_role_key.strip(),
+                app_settings.atlas_owner_user_id.strip(),
+            )
         raise HTTPException(
             status_code=401,
             detail="Envie um token de acesso no cabeçalho Authorization: Bearer.",
