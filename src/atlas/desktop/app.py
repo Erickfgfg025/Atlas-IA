@@ -501,7 +501,7 @@ class AtlasWindow(QMainWindow):
                                 self._load_history()
                         else:
                             self._access_token = ""
-                            self._settings.remove("access_token")
+                            _clear_session_token()
                             self._set_chat_visible(False)
                             self.status.setText("Sua sessão expirou. Entre novamente.")
                     except httpx.HTTPError:
@@ -738,6 +738,7 @@ class AtlasWindow(QMainWindow):
             return
         token = self._access_token
         self._access_token = ""
+        _clear_session_token()
         self._settings.remove("access_token")
         self._settings.remove("active_conversation_id")
         self._conversation_id = ""
