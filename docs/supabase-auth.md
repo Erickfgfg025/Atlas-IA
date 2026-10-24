@@ -1,36 +1,43 @@
 # Autenticação Supabase
 
-## Implementado nesta etapa
+## Fluxo implementado
 
-A interface desktop possui fluxo de cadastro, login, chat autenticado e logout. O backend expõe:
+O cliente desktop autentica pelo backend hospedado. O backend valida a sessão com Supabase Auth e usa o token do usuário nas operações de dados; não deve expor a chave `service_role` ao aplicativo desktop.
 
-- `POST /auth/signup`: cria uma conta usando e-mail e senha.
-- `POST /auth/login`: autentica uma conta existente.
-- `GET /auth/me`: valida o bearer token com Supabase Auth e retorna o ID validado.
-- `POST /auth/logout`: solicita ao Supabase o encerramento da sessão.
-- `POST /chat`: exige um bearer token válido antes de chamar o Gemini.
+Endpoints principais:
 
-O backend usa a chave publicável/anon configurada em `SUPABASE_KEY`. Nunca use `service_role` ou uma chave secreta nesse fluxo. A senha é encaminhada do backend para o endpoint oficial de Auth, sem ser registrada em logs. A resposta da API desktop não inclui refresh token.
+- `POST /auth/signup`: cadastro com e-mail e senha.
+- `POST /auth/login`: login e retorno do access token e duração da sessão.
+- `GET /auth/me`: valida o bearer token e retorna a identidade confirmada pelo Supabase.
+- `POST /auth/logout`: solicita encerramento da sessão.
+- `POST /chat`: exige autenticação no modo de nuvem.
+- As operações de conversas e memórias também devem usar a identidade validada e as políticas RLS do Supabase.
 
-## Configuração local
+## Configuração do backend
 
-No arquivo `.env` do backend:
+Configurar no ambiente privado do serviço:
 
 ```dotenv
+ATLAS_ENVIRONMENT=production
+ATLAS_MEMORY_BACKEND=supabase
 SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
-SUPABASE_KEY=SUA_CHAVE_PUBLICAVEL_OU_ANON
+SUPABASE_KEY=SUA_CHAVE_PUBLICAVEL
 GEMINI_API_KEY=SUA_CHAVE_GEMINI
 ```
 
-Não comite o arquivo `.env`. No Supabase, habilite Email Auth. Se a confirmação de e-mail estiver habilitada, o cadastro pode exigir confirmação antes do primeiro login.
+Nunca definir `SUPABASE_KEY` com uma chave `service_role` ou secret. Não colocar chaves privadas no cliente, no repositório ou em documentação. Não habilitar `ATLAS_DESKTOP_NO_LOGIN=true` no serviço público de clientes.
 
-## Sessão e armazenamento
+No Supabase Auth, configurar confirmação de e-mail e recuperação de senha de acordo com a política do produto. Se a confirmação estiver habilitada, um cadastro pode exigir a confirmação antes do primeiro login.
 
-Nesta versão, o access token fica apenas na memória do processo desktop e é apagado ao sair da conta ou fechar o aplicativo. Não há login automático após reiniciar o aplicativo. Isso é intencional até implementar armazenamento seguro usando Windows Credential Manager e fluxo de renovação de sessão.
+## Sessão no Windows
 
-## Testes
+O cliente usa o cofre de credenciais do sistema por meio da biblioteca `keyring` para guardar o token da sessão. Se o cofre não estiver disponível, o comportamento seguro é exigir login novamente em vez de gravar o token em texto simples.
 
-Os testes de autenticação usam `httpx.MockTransport`; não chamam Supabase real:
+A renovação automática por refresh token ainda precisa ser validada/implementada. Por isso, uma sessão pode expirar e exigir novo login. O logout deve limpar a credencial local e encerrar a sessão no provedor.
+
+## Verificações automatizadas
+
+Os testes unitários de autenticação usam transporte simulado e não comprovam a conectividade com o projeto Supabase real:
 
 ```powershell
 pytest tests/test_auth.py tests/test_auth_sessions.py
@@ -38,11 +45,21 @@ pytest
 ruff check .
 ```
 
-## Limites atuais
+O CI do repositório já executou os testes Python com sucesso em Python 3.11 e 3.12. Isso não substitui os testes manuais abaixo.
 
-- A API local e o fluxo de login ainda precisam ser executados manualmente no Windows com um projeto Supabase configurado.
-- A migração `atlas_memories` está no GitHub, mas não foi aplicada a um projeto Supabase.
-- Nenhuma memória é gravada ou recuperada ainda.
-- O agente local Windows, voz, armazenamento seguro de sessão e hospedagem na nuvem ainda não estão implementados.
+## Testes obrigatórios antes de disponibilizar a clientes
 
-Próxima etapa: conectar o repositório de memória à identidade validada, usando o access token do usuário para que o RLS continue aplicando o isolamento por linha.
+- [ ] Confirmar cadastro, confirmação de e-mail, login e logout em um projeto Supabase real.
+- [ ] Criar duas contas de teste e comprovar que conversas e memórias não atravessam contas.
+- [ ] Confirmar RLS habilitado em todas as tabelas de dados do cliente e políticas baseadas em `auth.uid() = user_id`.
+- [ ] Confirmar que token ausente, inválido ou expirado é rejeitado em todos os endpoints privados.
+- [ ] Verificar persistência no Windows Credential Manager e comportamento quando `keyring` não está disponível.
+- [ ] Testar expiração da sessão e exigir novo login de forma clara se não houver renovação.
+- [ ] Instalar o pacote em uma máquina Windows 10/11 limpa e testar login, chat, histórico, reinicialização, logout e desinstalação.
+
+## Limites conhecidos
+
+- O plano gratuito do Render pode suspender o serviço por inatividade, aumentando o tempo da primeira requisição.
+- O instalador atual não está assinado digitalmente e pode exibir avisos do Windows SmartScreen.
+- A compilação bem-sucedida do instalador não é prova de funcionamento em uma máquina Windows limpa.
+- Não anunciar o aplicativo como pronto para clientes até que os testes reais de autenticação, isolamento e instalação estejam concluídos.
