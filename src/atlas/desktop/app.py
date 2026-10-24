@@ -378,7 +378,9 @@ class AtlasWindow(QMainWindow):
         self.transcript.setMinimumHeight(100)
         self.transcript.setMaximumHeight(230)
         self.transcript.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.transcript.hide()
         work.addWidget(self.transcript, 2)
+        self.visual_canvas.hide()
 
         composer = QFrame()
         composer.setStyleSheet("QFrame { background:#10141B;border:1px solid #303847;border-radius:18px; }")
@@ -423,11 +425,10 @@ class AtlasWindow(QMainWindow):
         self.quick_write.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a escrever um texto."))
         self.quick_code.clicked.connect(lambda: self._use_quick_prompt("Ajude-me com código."))
         self.quick_plan.clicked.connect(lambda: self._use_quick_prompt("Ajude-me a criar um plano."))
-        actions.addWidget(self.quick_write)
-        actions.addWidget(self.quick_code)
-        actions.addWidget(self.quick_plan)
-        actions.addWidget(self.quick_visual)
-        actions.addStretch(1)
+        # A tela inicial segue o layout minimalista do Figma. Atalhos ficam
+        # disponíveis no código para uma futura paleta de comandos, sem poluir a home.
+        for quick_action in (self.quick_write, self.quick_code, self.quick_plan, self.quick_visual):
+            quick_action.hide()
         work.addLayout(actions)
 
         footer = QLabel("ATLAS AI  ·  FEITO PARA VOCÊ")
@@ -555,6 +556,7 @@ class AtlasWindow(QMainWindow):
                 "para usar sem conta."
             )
             return
+        self.transcript.show()
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
         if any(term in message.casefold() for term in ("crie uma anima", "cria uma anima", "motion design", "gere uma cena", "crie uma cena", "visualize", "animação de", "animacao de", "desenhe", "gere um diagrama")):
             self._start_visual_scene(message)
@@ -778,10 +780,13 @@ class AtlasWindow(QMainWindow):
                 self._conversation_id = conversation_id
                 self._settings.setValue("active_conversation_id", conversation_id)
                 self.transcript.clear()
+                self.transcript.hide()
                 self.status.setText("Nova conversa iniciada.")
         elif operation == "history":
             self.transcript.clear()
-            for message in result.get("messages", []):
+            history_messages = result.get("messages", [])
+            self.transcript.setVisible(bool(history_messages))
+            for message in history_messages:
                 if not isinstance(message, dict):
                     continue
                 role = message.get("role")
@@ -818,6 +823,7 @@ class AtlasWindow(QMainWindow):
             if isinstance(answer, str):
                 self._last_answer = answer
                 self.speak_button.setEnabled(bool(answer.strip()))
+                self.transcript.show()
                 self.transcript.append(f"<b>ATLAS:</b> {_safe_html(answer)}")
         elif operation == "logout":
             self._set_chat_visible(False)
