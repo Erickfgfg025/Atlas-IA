@@ -1,10 +1,12 @@
 from datetime import datetime
+import ipaddress
 import json
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
@@ -34,6 +36,23 @@ from atlas.backend.voice_routes import router as voice_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.2.0")
+
+@app.middleware("http")
+async def restrict_passwordless_desktop_to_loopback(request: Request, call_next):
+    """Never expose the service-role-backed desktop mode to a network interface."""
+    current = get_settings()
+    if desktop_supabase_no_login_enabled(current):
+        client_host = request.client.host if request.client else ""
+        try:
+            is_loopback = ipaddress.ip_address(client_host).is_loopback
+        except ValueError:
+            is_loopback = client_host.lower() == "localhost"
+        if not is_loopback:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "O modo pessoal sem login aceita apenas conexões locais."},
+            )
+    return await call_next(request)
 app.include_router(voice_router)
 app.include_router(agent_router)
 _bearer = HTTPBearer(auto_error=False)
