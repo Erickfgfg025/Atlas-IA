@@ -101,7 +101,13 @@ class ApiWorker(QThread):
     def run(self) -> None:
         try:
             headers = {"Authorization": f"Bearer {self.access_token}"} if self.access_token else {}
-            if self.operation in ("login", "signup"):
+            if self.operation == "activate":
+                response = httpx.post(
+                    f"{API_BASE}/auth/activate",
+                    json={"code": self.email},
+                    timeout=15.0,
+                )
+            elif self.operation in ("login", "signup"):
                 response = httpx.post(
                     f"{API_BASE}/auth/{self.operation}",
                     json={"email": self.email, "password": self.password},
@@ -251,16 +257,15 @@ class AtlasWindow(QMainWindow):
         self.voice_state = QLabel("PRONTO PARA CONVERSAR")
         self.voice_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.voice_state.setStyleSheet("color: #8FA7C7; letter-spacing: 2px; font-size: 9px; font-weight: 600;")
-        self.auth_title = QLabel("Entre na sua conta ATLAS")
+        self.auth_title = QLabel("Ative seu acesso ao ATLAS")
         self.email = QLineEdit()
-        self.email.setPlaceholderText("E-mail")
+        self.email.setPlaceholderText("Código de ativação")
         self.password = QLineEdit()
-        self.password.setPlaceholderText("Senha (mínimo 8 caracteres)")
-        self.password.setEchoMode(QLineEdit.Password)
-        self.login_button = QPushButton("Entrar")
-        self.signup_button = QPushButton("Criar conta")
-        self.login_button.clicked.connect(lambda: self.start_auth("login"))
-        self.signup_button.clicked.connect(lambda: self.start_auth("signup"))
+        self.password.setVisible(False)
+        self.login_button = QPushButton("ATIVAR ACESSO")
+        self.signup_button = QPushButton(" ")
+        self.signup_button.setVisible(False)
+        self.login_button.clicked.connect(lambda: self.start_auth("activate"))
 
         self.transcript = QTextEdit()
         self.transcript.setReadOnly(True)
@@ -534,27 +539,22 @@ class AtlasWindow(QMainWindow):
     def start_auth(self, operation: str) -> None:
         if self._auth_mode == "local":
             return
-        email = self.email.text().strip()
-        password = self.password.text()
-        if not email or not password:
-            self.status.setText("Informe e-mail e senha.")
-            return
-        if len(password) < 8:
-            self.status.setText("A senha deve ter pelo menos 8 caracteres.")
+        code = self.email.text().strip()
+        if not code:
+            self.status.setText("Informe seu código de ativação.")
             return
         self.login_button.setEnabled(False)
-        self.signup_button.setEnabled(False)
-        self.status.setText("Conectando ao Supabase Auth...")
+        self.status.setText("Validando código de ativação...")
         self._start_worker(
-            ApiWorker(operation, email=email, password=password, parent=self),
-            operation,
+            ApiWorker("activate", email=code, parent=self),
+            "activate",
         )
 
     def send_message(self) -> None:
         message = self.input.text().strip()
         if not message or self._worker is not None:
             return
-        if self._auth_mode == "supabase" and not self._access_token:
+        if self._auth_mode in {"supabase", "activation_code"} and not self._access_token:
             self.status.setText(
                 "O backend está em modo Supabase. Configure ATLAS_MEMORY_BACKEND=local "
                 "para usar sem conta."
@@ -759,7 +759,7 @@ class AtlasWindow(QMainWindow):
             self.status.setText("A API retornou uma resposta inválida.")
             return
         operation = result.get("operation")
-        if operation in ("login", "signup"):
+        if operation in ("login", "signup", "activate"):
             token = result.get("access_token")
             if isinstance(token, str) and token:
                 self._access_token = token
@@ -856,7 +856,7 @@ class AtlasWindow(QMainWindow):
             self._cleanup_temporary_recording()
         finished_operation = self._pending_operation
         self._worker = None
-        if finished_operation in ("login", "signup") and self._access_token and self._conversation_id:
+        if finished_operation in ("login", "signup", "activate") and self._access_token and self._conversation_id:
             self._load_history()
         if self._pending_operation in ("chat", "voice_transcribe") and self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
             self._set_voice_state("idle", "PRONTO PARA CONVERSAR")
