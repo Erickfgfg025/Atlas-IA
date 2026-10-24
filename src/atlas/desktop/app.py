@@ -406,8 +406,23 @@ class AtlasWindow(QMainWindow):
         work.addStretch(1)
         root_layout.addWidget(workspace, 1)
         self.setCentralWidget(root)
-        self._set_chat_visible(True)
+        self._login_panel = QFrame()
+        self._login_panel.setObjectName("LoginPanel")
+        self._login_panel.setStyleSheet("QFrame#LoginPanel { background:#10141B; border:1px solid #303847; border-radius:16px; }")
+        login_layout = QVBoxLayout(self._login_panel)
+        login_layout.setContentsMargins(22, 18, 22, 18)
+        login_layout.setSpacing(10)
+        login_layout.addWidget(self.auth_title)
+        login_layout.addWidget(self.email)
+        login_layout.addWidget(self.password)
+        auth_actions = QHBoxLayout()
+        self.login_button.setObjectName("Primary")
+        auth_actions.addWidget(self.login_button)
+        auth_actions.addWidget(self.signup_button)
+        login_layout.addLayout(auth_actions)
+        work.insertWidget(2, self._login_panel, 0, Qt.AlignmentFlag.AlignHCenter)
         self.speak_button.setEnabled(False)
+        self._set_chat_visible(False)
         self.check_api()
 
     def _use_quick_prompt(self, prompt: str) -> None:
@@ -415,19 +430,15 @@ class AtlasWindow(QMainWindow):
         self.input.setFocus()
 
     def _set_chat_visible(self, visible: bool = True) -> None:
-        # A interface não exige conta; o backend deve aceitar chamadas sem token.
-        for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan, self.quick_visual):
-            widget.setVisible(True)
-        self.new_conversation_button.setVisible(False)
-        self.logout_button.setVisible(False)
-        for widget in (
-            self.auth_title,
-            self.email,
-            self.password,
-            self.login_button,
-            self.signup_button,
-        ):
-            widget.setVisible(False)
+        chat_widgets = (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan, self.quick_visual)
+        for widget in chat_widgets:
+            widget.setVisible(visible)
+        if self._login_panel is not None:
+            self._login_panel.setVisible(not visible and self._auth_mode == "supabase")
+        self.new_conversation_button.setVisible(visible and self._auth_mode == "supabase")
+        self.logout_button.setVisible(visible and self._auth_mode == "supabase")
+        for widget in (self.auth_title, self.email, self.password, self.login_button, self.signup_button):
+            widget.setVisible(not visible and self._auth_mode == "supabase")
 
     def check_api(self) -> None:
         try:
