@@ -240,7 +240,7 @@ class AtlasWindow(QMainWindow):
         self._recorder.errorOccurred.connect(self._on_recording_error)
         self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
         self._access_token = _load_session_token()
-        _clear_session_token()
+        self._settings.remove("access_token")
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
         self.setMinimumSize(600, 420)
