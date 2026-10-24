@@ -476,11 +476,13 @@ class AtlasWindow(QMainWindow):
         for widget in chat_widgets:
             widget.setVisible(visible)
         if self._login_panel is not None:
-            self._login_panel.setVisible(not visible and self._auth_mode == "supabase")
-        self.new_conversation_button.setVisible(visible and self._auth_mode == "supabase")
-        self.logout_button.setVisible(visible and self._auth_mode == "supabase")
-        for widget in (self.auth_title, self.email, self.password, self.login_button, self.signup_button):
-            widget.setVisible(not visible and self._auth_mode == "supabase")
+            self._login_panel.setVisible(not visible and self._auth_mode in {"supabase", "activation_code"})
+        self.new_conversation_button.setVisible(visible and self._auth_mode in {"supabase", "activation_code"})
+        self.logout_button.setVisible(visible and self._auth_mode in {"supabase", "activation_code"})
+        for widget in (self.auth_title, self.email, self.login_button):
+            widget.setVisible(not visible and self._auth_mode in {"supabase", "activation_code"})
+        self.password.setVisible(False)
+        self.signup_button.setVisible(False)
 
     def check_api(self) -> None:
         try:
@@ -490,10 +492,29 @@ class AtlasWindow(QMainWindow):
             reported_auth_mode = payload.get("auth_mode")
             self._auth_mode = (
                 reported_auth_mode
-                if reported_auth_mode in {"local", "supabase", "supabase_single_user"}
+                if reported_auth_mode in {"local", "supabase", "supabase_single_user", "activation_code"}
                 else "supabase"
             )
-            if self._auth_mode == "local":
+            if self._auth_mode == "activation_code":
+                if self._access_token:
+                    try:
+                        auth_response = httpx.get(f"{API_BASE}/auth/me", headers={"Authorization": f"Bearer {self._access_token}"}, timeout=8.0)
+                        if auth_response.is_success:
+                            self._set_chat_visible(True)
+                            self.status.setText("Acesso ATLAS restaurado neste computador.")
+                            if self._conversation_id:
+                                self._load_history()
+                        else:
+                            self._access_token = ""
+                            _clear_session_token()
+                            self._set_chat_visible(False)
+                            self.status.setText("Sessão expirada. Informe seu código de ativação.")
+                    except httpx.HTTPError:
+                        self.status.setText("Sem conexão. A sessão será verificada quando voltar.")
+                else:
+                    self._set_chat_visible(False)
+                    self.status.setText("Informe seu código pessoal para ativar o ATLAS.")
+            elif self._auth_mode == "local":
                 self._set_chat_visible(True)
                 self.status.setText("ATLAS conectado · memória e histórico locais")
                 if self._conversation_id:
