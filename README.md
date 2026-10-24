@@ -45,7 +45,9 @@ Copy-Item .env.example .env
 
 Por padrão, `ATLAS_MEMORY_BACKEND=local`. O SQLite é criado automaticamente no diretório de dados do usuário. Para escolher outro caminho, defina `ATLAS_LOCAL_DB_PATH`. Não comite `.env`.
 
-Para ativar o modo remoto posteriormente, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use a chave `service_role` no desktop.
+Para ativar o modo remoto com login, defina `ATLAS_MEMORY_BACKEND=supabase`, configure `SUPABASE_URL` e `SUPABASE_KEY` com a chave publicável/anon e habilite Email Auth. Nunca use a chave `service_role` no desktop.
+
+Para o modo pessoal sem tela de login, mantenha `ATLAS_MEMORY_BACKEND=supabase`, defina `ATLAS_DESKTOP_NO_LOGIN=true` e informe `ATLAS_OWNER_USER_ID` com o UUID do usuário existente no Supabase Auth. Configure `SUPABASE_SERVICE_ROLE_KEY` com a chave JWT legada `service_role`, somente no `.env` local do backend. Essa chave ignora RLS, por isso esse modo só funciona com o backend local, vinculado a `127.0.0.1`; a API também rejeita requisições de clientes remotos. Não use esse modo em Render ou em qualquer backend público. Aplique as migrations de memória e histórico antes de usar. Reinicie o backend depois de alterar `.env`.
 
 ## Executar
 Terminal 1:
