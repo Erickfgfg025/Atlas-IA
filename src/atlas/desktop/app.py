@@ -329,13 +329,7 @@ class AtlasWindow(QMainWindow):
         self.auth_title.setStyleSheet("font-size:20px;font-weight:700;color:#F4F6FA;padding:6px;")
         self.email.setPlaceholderText("E-MAIL")
         self.password.setPlaceholderText("SENHA")
-        auth_row = QHBoxLayout()
-        auth_row.addWidget(self.email, 2)
-        auth_row.addWidget(self.password, 2)
-        auth_row.addWidget(self.login_button, 1)
-        auth_row.addWidget(self.signup_button, 1)
-        work.addWidget(self.auth_title)
-        work.addLayout(auth_row)
+        # A interface desktop pessoal não exige cadastro.
 
         headline = QLabel("COMO POSSO AJUDAR?")
         headline.setObjectName("Headline")
@@ -412,7 +406,7 @@ class AtlasWindow(QMainWindow):
         work.addStretch(1)
         root_layout.addWidget(workspace, 1)
         self.setCentralWidget(root)
-        self._set_chat_visible(False)
+        self._set_chat_visible(True)
         self.speak_button.setEnabled(False)
         self.check_api()
 
@@ -420,11 +414,12 @@ class AtlasWindow(QMainWindow):
         self.input.setText(prompt)
         self.input.setFocus()
 
-    def _set_chat_visible(self, visible: bool) -> None:
+    def _set_chat_visible(self, visible: bool = True) -> None:
+        # A interface não exige conta; o backend deve aceitar chamadas sem token.
         for widget in (self.transcript, self.input, self.send_button, self.transcribe_button, self.record_button, self.speak_button, self.quick_write, self.quick_code, self.quick_plan, self.quick_visual):
-            widget.setVisible(visible)
+            widget.setVisible(True)
         self.new_conversation_button.setVisible(False)
-        self.logout_button.setVisible(visible and self._auth_mode == "supabase")
+        self.logout_button.setVisible(False)
         for widget in (
             self.auth_title,
             self.email,
@@ -432,7 +427,7 @@ class AtlasWindow(QMainWindow):
             self.login_button,
             self.signup_button,
         ):
-            widget.setVisible(not visible)
+            widget.setVisible(False)
 
     def check_api(self) -> None:
         try:
@@ -448,7 +443,10 @@ class AtlasWindow(QMainWindow):
                 if self._conversation_id:
                     self._load_history()
             else:
-                self.status.setText("ATLAS API conectada · autenticação Supabase")
+                self.status.setText(
+                    "API exige autenticação remota. Configure ATLAS_MEMORY_BACKEND=local "
+                    "para usar o Atlas sem conta."
+                )
         except (httpx.HTTPError, ValueError):
             self.status.setText("ATLAS API: offline. Inicie o backend local.")
 
@@ -487,6 +485,10 @@ class AtlasWindow(QMainWindow):
         if not message or self._worker is not None:
             return
         if self._auth_mode == "supabase" and not self._access_token:
+            self.status.setText(
+                "O backend está em modo Supabase. Configure ATLAS_MEMORY_BACKEND=local "
+                "para usar sem conta."
+            )
             return
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
         if any(term in message.casefold() for term in ("crie uma anima", "cria uma anima", "motion design", "gere uma cena", "crie uma cena", "visualize", "animação de", "animacao de", "desenhe", "gere um diagrama")):
