@@ -27,7 +27,8 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - O histórico remoto no modo Supabase usa tabelas próprias e RLS por usuário. A migration `supabase/migrations/20261022000000_cloud_conversations.sql` precisa ser aplicada no projeto Supabase antes do uso em produção.
 ## Modos de operação
 - **local (padrão):** memória SQLite no computador, sem conta Supabase. A API deve permanecer vinculada a `127.0.0.1`.
-- **supabase (opcional):** autenticação Supabase e armazenamento remoto com RLS. Requer URL, chave publicável/anon e migração aplicada ao projeto escolhido.
+- **supabase (opcional):** autenticação Supabase e armazenamento remoto por usuário. Requer URL, chave publicável/anon e migrações aplicadas ao projeto escolhido.
+- **supabase sem login (desktop pessoal):** a interface abre direto, sem e-mail/senha, e usa Supabase para memória e histórico. Requer `ATLAS_DESKTOP_NO_LOGIN=true`, `ATLAS_OWNER_USER_ID` (UUID do usuário dono) e `SUPABASE_SERVICE_ROLE_KEY` configurados somente no `.env` do backend. A API rejeita conexões não locais nesse modo e deve ser iniciada em `127.0.0.1`. A chave `service_role` ignora RLS: use somente no backend local privado, nunca em um deploy público ou no executável desktop.
 
 ## Instalação no PowerShell
 Python 3.11, 3.12 ou 3.13. Para conversar, configure `GEMINI_API_KEY` em `.env`.
