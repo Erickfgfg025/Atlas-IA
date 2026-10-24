@@ -41,6 +41,33 @@ def _safe_html(text: str) -> str:
     return html.escape(text).replace("\n", "<br>")
 
 
+def _load_session_token() -> str:
+    """Load the access token from the Windows credential vault via keyring."""
+    try:
+        import keyring
+        return keyring.get_password("AtlasAI", "desktop-session") or ""
+    except Exception:
+        return ""
+
+
+def _store_session_token(token: str) -> bool:
+    """Persist a session token in the OS credential store, never in plain settings."""
+    try:
+        import keyring
+        keyring.set_password("AtlasAI", "desktop-session", token)
+        return True
+    except Exception:
+        return False
+
+
+def _clear_session_token() -> None:
+    try:
+        import keyring
+        keyring.delete_password("AtlasAI", "desktop-session")
+    except Exception:
+        pass
+
+
 class ApiWorker(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
@@ -212,6 +239,8 @@ class AtlasWindow(QMainWindow):
         self._recording_timeout.timeout.connect(self._stop_microphone_recording)
         self._recorder.errorOccurred.connect(self._on_recording_error)
         self._conversation_id = self._settings.value("active_conversation_id", "", type=str)
+        self._access_token = _load_session_token()
+        _clear_session_token()
         self.setWindowTitle("ATLAS AI")
         self.resize(760, 560)
         self.setMinimumSize(600, 420)
@@ -724,7 +753,7 @@ class AtlasWindow(QMainWindow):
             token = result.get("access_token")
             if isinstance(token, str) and token:
                 self._access_token = token
-                self._settings.setValue("access_token", token)
+                _store_session_token(token)
                 user_id = result.get("user_id")
                 suffix = f" · usuário {user_id}" if isinstance(user_id, str) else ""
                 self.status.setText(f"ATLAS conectado{suffix}")
