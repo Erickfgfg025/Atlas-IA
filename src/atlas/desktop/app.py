@@ -82,6 +82,7 @@ class ApiWorker(QThread):
         access_token: str = "",
         conversation_id: str = "",
         audio_path: str = "",
+        public_cloud: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -92,6 +93,7 @@ class ApiWorker(QThread):
         self.access_token = access_token
         self.conversation_id = conversation_id
         self.audio_path = audio_path
+        self.public_cloud = public_cloud
 
     @staticmethod
     def _mime_type(path: str) -> str:
@@ -127,6 +129,12 @@ class ApiWorker(QThread):
                     json={"prompt": self.message},
                     headers=headers,
                     timeout=90.0,
+                )
+            elif self.operation == "chat" and not self.access_token and self.public_cloud:
+                response = httpx.post(
+                    f"{API_BASE}/public/chat",
+                    json={"message": self.message},
+                    timeout=60.0,
                 )
             elif self.operation == "chat":
                 response = httpx.post(
@@ -532,10 +540,19 @@ class AtlasWindow(QMainWindow):
             reported_auth_mode = payload.get("auth_mode")
             self._auth_mode = (
                 reported_auth_mode
-                if reported_auth_mode in {"local", "supabase", "supabase_single_user", "activation_code"}
+                if reported_auth_mode in {"local", "supabase", "supabase_single_user", "activation_code", "public_cloud"}
                 else "supabase"
             )
-            if self._auth_mode == "activation_code":
+            if self._auth_mode == "public_cloud":
+                self._access_token = ""
+                self._set_chat_visible(True)
+                self.status.setText("ATLAS conectado · nuvem pública · sem histórico privado")
+                self.record_button.setVisible(False)
+                self.transcribe_button.setVisible(False)
+                self.speak_button.setVisible(False)
+                self.new_conversation_button.setVisible(False)
+                self.logout_button.setVisible(False)
+            elif self._auth_mode == "activation_code":
                 if self._access_token:
                     try:
                         auth_response = httpx.get(f"{API_BASE}/auth/me", headers={"Authorization": f"Bearer {self._access_token}"}, timeout=8.0)
@@ -623,7 +640,7 @@ class AtlasWindow(QMainWindow):
             return
         self.transcript.show()
         self.transcript.append(f"<b>Você:</b> {_safe_html(message)}")
-        if any(term in message.casefold() for term in ("crie uma anima", "cria uma anima", "motion design", "gere uma cena", "crie uma cena", "visualize", "animação de", "animacao de", "desenhe", "gere um diagrama")):
+        if self._auth_mode != "public_cloud" and any(term in message.casefold() for term in ("crie uma anima", "cria uma anima", "motion design", "gere uma cena", "crie uma cena", "visualize", "animação de", "animacao de", "desenhe", "gere um diagrama")):
             self._start_visual_scene(message)
             self.input.clear()
             return
@@ -636,7 +653,8 @@ class AtlasWindow(QMainWindow):
                 "chat",
                 message=message,
                 access_token=self._access_token,
-                conversation_id=self._conversation_id,
+                conversation_id="" if self._auth_mode == "public_cloud" else self._conversation_id,
+                public_cloud=self._auth_mode == "public_cloud",
                 parent=self,
             ),
             "chat",

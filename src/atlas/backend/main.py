@@ -2,6 +2,7 @@ from datetime import datetime
 import ipaddress
 import json
 import hmac
+import time
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
@@ -184,7 +185,9 @@ def health() -> dict[str, Any]:
         "environment": settings.environment,
         "memory_backend": settings.memory_backend,
         "auth_mode": (
-            "activation_code"
+            "public_cloud"
+            if settings.public_cloud_mode and settings.chat_provider.strip().casefold() == "gemini" and settings.gemini_api_key.strip()
+            else "activation_code"
             if activation_enabled(settings)
             else "supabase_single_user"
             if desktop_supabase_no_login_enabled(settings)
@@ -453,6 +456,39 @@ async def create_visual_scene(
             detail="Não foi possível gerar uma cena visual válida. Tente reformular o pedido.",
         ) from exc
 
+
+
+# Public cloud chat deliberately has no memory, conversation history, or account data.
+# A small in-process throttle reduces accidental bursts but is not a substitute for
+# an edge/WAF rate limit on a public production service.
+_public_chat_hits: dict[str, list[float]] = {}
+
+@app.post("/public/chat", response_model=ChatResponse)
+async def public_chat(request: ChatRequest, request_context: Request) -> ChatResponse:
+    current = get_settings()
+    if not current.public_cloud_mode:
+        raise HTTPException(status_code=404, detail="Chat público não está habilitado.")
+    if current.chat_provider.strip().casefold() != "gemini" or not current.gemini_api_key.strip():
+        raise HTTPException(status_code=503, detail="O provedor de IA não está configurado.")
+    client_ip = request_context.client.host if request_context.client else "unknown"
+    now = time.monotonic()
+    recent = [stamp for stamp in _public_chat_hits.get(client_ip, []) if now - stamp < 60]
+    if len(recent) >= 8:
+        raise HTTPException(status_code=429, detail="Limite temporário atingido. Aguarde um minuto.")
+    recent.append(now)
+    _public_chat_hits[client_ip] = recent
+    try:
+        provider = GeminiProvider(current.gemini_api_key, current.gemini_model)
+        answer = await provider.generate(
+            "Você é o ATLAS AI, um assistente útil e direto. Este é um chat público sem memória "
+            "persistente. Não afirme lembrar conversas anteriores. Pedido do usuário: "
+            + request.message.strip()
+        )
+    except (MissingGeminiConfiguration, MissingOpenJarvisConfiguration) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="O provedor de IA falhou. Tente novamente.") from exc
+    return ChatResponse(response=answer, conversation_id=None)
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(
