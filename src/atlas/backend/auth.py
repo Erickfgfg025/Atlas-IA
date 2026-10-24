@@ -8,6 +8,7 @@ import httpx
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from atlas.backend.config import Settings, get_settings
 
 
 def desktop_supabase_no_login_enabled(settings: Settings) -> bool:
@@ -15,12 +16,12 @@ def desktop_supabase_no_login_enabled(settings: Settings) -> bool:
     return bool(
         settings.desktop_no_login
         and settings.memory_backend == "supabase"
+        and settings.supabase_url.strip()
+        and settings.supabase_key.strip()
         and settings.supabase_service_role_key.strip()
         and settings.atlas_owner_user_id.strip()
         and settings.api_host.strip().lower() in {"127.0.0.1", "localhost", "::1"}
     )
-
-from atlas.backend.config import Settings, get_settings
 
 _bearer = HTTPBearer(auto_error=False)
 
