@@ -291,24 +291,64 @@ class AtlasWindow(QMainWindow):
         self.resize(1180, 760)
 
         self.setStyleSheet("""
-            QMainWindow, QWidget { background: #090A0C; color: #F2F4F8; font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; }
-            QFrame#Topbar { background: #0B0C0E; border-bottom: 1px solid #292B30; }
-            QLabel#Brand { color: #F2F4F8; font-family: 'Space Grotesk', 'Segoe UI', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 2px; }
-            QLabel#Eyebrow { color: #858B98; font-size: 9px; font-weight: 600; letter-spacing: 2px; }
-            QLabel#Status { color: #858B98; font-size: 10px; }
-            QLabel#VoiceState { color: #FF6B18; font-size: 9px; font-weight: 600; letter-spacing: 2px; padding: 3px; }
-            QLabel#Headline { color: #F4F6FA; font-family: 'Sora', 'Inter', sans-serif; font-size: 28px; font-weight: 700; }
-            QLabel#Subheadline { color: #939CAB; font-size: 10px; letter-spacing: 2px; }
-            QPushButton { background: #141923; color: #E8EDF5; border: 1px solid #394454; border-radius: 11px; padding: 10px 14px; font-size: 10px; font-weight: 600; }
-            QPushButton:hover { background: #202630; border-color: #596477; }
-            QPushButton:disabled { color: #555D69; border-color: #252A31; }
-            QPushButton#Primary { background: #FF6B18; color: #16100C; border: 1px solid #FF8A45; border-radius: 11px; font-size: 11px; font-weight: 700; padding: 10px 18px; }
-            QPushButton#Primary:hover { background: #FF8540; }
-            QPushButton#Quiet { background: transparent; color: #A3AAB5; border: 1px solid transparent; }
-            QLineEdit, QTextEdit { background: #10141B; color: #F4F6FA; border: 1px solid #303847; border-radius: 12px; padding: 12px; selection-background-color: #A94D17; }
-            QLineEdit:focus, QTextEdit:focus { border: 1px solid #FF6B18; }
+            QMainWindow, QWidget {
+                background: #08090B; color: #F3F4F6;
+                font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px;
+            }
+            QFrame#Topbar {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #101114, stop:1 #0B0C0E);
+                border-bottom: 1px solid #25262B;
+            }
+            QLabel#Brand {
+                color: #F5F5F6; font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+                font-size: 17px; font-weight: 700; letter-spacing: 2px;
+            }
+            QLabel#Eyebrow { color: #777D87; font-size: 9px; font-weight: 600; letter-spacing: 2px; }
+            QLabel#Status {
+                color: #A8ADB5; background: #111216; border: 1px solid #292A30;
+                border-radius: 10px; padding: 7px 10px; font-size: 10px;
+            }
+            QLabel#VoiceState { color: #FF7830; font-size: 9px; font-weight: 700; letter-spacing: 2px; padding: 3px; }
+            QLabel#Headline { color: #F5F5F6; font-family: 'Sora', 'Inter', sans-serif; font-size: 28px; font-weight: 700; }
+            QLabel#Subheadline { color: #8F949D; font-size: 10px; letter-spacing: 2px; }
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #191A1F, stop:1 #121317);
+                color: #E7E8EB; border: 1px solid #303138; border-radius: 12px;
+                padding: 10px 14px; font-size: 10px; font-weight: 650;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #24252B, stop:1 #191A1F);
+                border-color: #50515A; color: #FFFFFF;
+            }
+            QPushButton:pressed { background: #101114; border-color: #FF7830; }
+            QPushButton:disabled { color: #555962; background: #101114; border-color: #222329; }
+            QPushButton#Primary {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FF8540, stop:0.48 #FF7025, stop:1 #F45C12);
+                color: #1B1009; border: 1px solid #FF9A5C; border-radius: 12px;
+                font-size: 11px; font-weight: 750; padding: 10px 18px;
+            }
+            QPushButton#Primary:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFA064, stop:1 #FF7830);
+                border-color: #FFB07D;
+            }
+            QPushButton#Primary:pressed { background: #E9570D; }
+            QPushButton#Quiet { background: transparent; color: #9297A1; border: 1px solid transparent; }
+            QPushButton#Quiet:hover { background: #15161A; color: #F0F1F3; border-color: #292A30; }
+            QLineEdit, QTextEdit {
+                background: #0E0F12; color: #F4F5F7; border: 1px solid #2B2D33;
+                border-radius: 13px; padding: 12px; selection-background-color: #A94D17;
+            }
+            QLineEdit:focus, QTextEdit:focus { border: 1px solid #FF7830; background: #101114; }
             QLineEdit { min-height: 26px; font-size: 14px; }
             QTextEdit { font-size: 13px; }
+            QFrame#Composer {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #131418, stop:1 #0D0E11);
+                border: 1px solid #303137; border-radius: 18px;
+            }
+            QFrame#LoginPanel {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #15161A, stop:1 #0E0F12);
+                border: 1px solid #303137; border-radius: 18px;
+            }
         """)
 
         root = QWidget()
@@ -388,7 +428,7 @@ class AtlasWindow(QMainWindow):
         self.visual_canvas.hide()
 
         composer = QFrame()
-        composer.setStyleSheet("QFrame { background:#10141B;border:1px solid #303847;border-radius:18px; }")
+        composer.setObjectName("Composer")
         composer_layout = QVBoxLayout(composer)
         composer_layout.setContentsMargins(16, 10, 10, 10)
         composer_layout.setSpacing(7)
@@ -450,7 +490,7 @@ class AtlasWindow(QMainWindow):
         self.setCentralWidget(root)
         self._login_panel = QFrame()
         self._login_panel.setObjectName("LoginPanel")
-        self._login_panel.setStyleSheet("QFrame#LoginPanel { background:#10141B; border:1px solid #303847; border-radius:16px; }")
+        self._login_panel.setStyleSheet("")
         login_layout = QVBoxLayout(self._login_panel)
         login_layout.setContentsMargins(22, 18, 22, 18)
         login_layout.setSpacing(10)
