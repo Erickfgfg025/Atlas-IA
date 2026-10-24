@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-from atlas.backend.auth import verify_supabase_access_token
+from atlas.backend.auth import verify_supabase_access_token, desktop_supabase_no_login_enabled
 from atlas.backend.config import Settings, get_settings
 from atlas.providers.fish_audio import FishAudioProvider, MissingFishAudioConfiguration
 from atlas.providers.gemini import MissingGeminiConfiguration
@@ -21,6 +21,8 @@ async def _check_auth(settings: Settings, credentials: HTTPAuthorizationCredenti
     if settings.memory_backend != "supabase":
         raise HTTPException(status_code=503, detail="ATLAS_MEMORY_BACKEND inválido.")
     if credentials is None or credentials.scheme.lower() != "bearer":
+        if desktop_supabase_no_login_enabled(settings):
+            return
         raise HTTPException(status_code=401, detail="Autenticação obrigatória.")
     await verify_supabase_access_token(credentials.credentials, settings)
 
