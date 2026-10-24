@@ -40,6 +40,7 @@ jobs:
             --runtime-hook "build/windows/runtime_hook.py" `
             --collect-all PySide6 `
             --collect-all shiboken6 `
+            --collect-all keyring `
             --hidden-import "atlas.desktop.memories_dialog" `
             --hidden-import "atlas.desktop.voice_orb" `
             "src/atlas/desktop/app.py"
