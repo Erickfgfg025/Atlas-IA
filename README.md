@@ -30,8 +30,8 @@ Assistente pessoal para Windows 10/11 com Python, PySide6, FastAPI e Gemini via 
 - **supabase (opcional):** autenticação Supabase e armazenamento remoto por usuário. Requer URL, chave publicável/anon e migrações aplicadas ao projeto escolhido.
 - **supabase sem login (desktop pessoal):** a interface abre direto, sem e-mail/senha, e usa Supabase para memória e histórico. Requer `ATLAS_DESKTOP_NO_LOGIN=true`, `ATLAS_OWNER_USER_ID` (UUID do usuário dono) e `SUPABASE_SERVICE_ROLE_KEY` configurados somente no `.env` do backend. A API rejeita conexões não locais nesse modo e deve ser iniciada em `127.0.0.1`. A chave `service_role` ignora RLS: use somente no backend local privado, nunca em um deploy público ou no executável desktop.
 
-## Instalação no PowerShell
-Python 3.11, 3.12 ou 3.13. Para conversar, configure `GEMINI_API_KEY` em `.env`.
+## Instalação para desenvolvimento
+Para desenvolver o projeto, use Python 3.11, 3.12 ou 3.13 e configure `GEMINI_API_KEY` no `.env`.
 
 ```powershell
 git clone https://github.com/Erickfgfg025/Atlas-IA.git
@@ -42,6 +42,11 @@ python -m pip install --upgrade pip
 pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
+
+## Instalação para clientes Windows
+Clientes não devem clonar o repositório nem executar comandos. O workflow **Windows installer** empacota o aplicativo e produz `Atlas-AI-Setup-0.1.0-Windows.exe`. Baixe o instalador na GitHub Release oficial quando uma versão estiver publicada. O assistente instala o aplicativo, cria atalhos e permite abrir o Atlas AI diretamente. Na primeira execução, o cliente entra ou cria uma conta; a API hospedada e o Supabase cuidam da IA e dos dados sincronizados.
+
+Documentação: [instalação do cliente](docs/INSTALACAO_CLIENTE.md) e [distribuição e segurança](docs/DISTRIBUICAO_CLIENTES.md).
 
 Por padrão, `ATLAS_MEMORY_BACKEND=local`. O SQLite é criado automaticamente no diretório de dados do usuário. Para escolher outro caminho, defina `ATLAS_LOCAL_DB_PATH`. Não comite `.env`.
 
@@ -124,6 +129,6 @@ A alteração foi registrada no GitHub, mas não foi implantada nem executada co
 ## Voz no aplicativo desktop
 - **Transcrever arquivo de áudio:** seleciona um arquivo compatível, envia para `POST /voice/transcribe` e coloca a transcrição no campo de mensagem para revisão antes do envio.
 - **Ouvir última resposta:** envia a resposta mais recente para `POST /voice/synthesize` e reproduz o MP3 no aplicativo.
-- O desktop usa `ATLAS_API_URL` para apontar para a API implantada; sem essa variável, usa `http://127.0.0.1:8000`. Defina essa variável no ambiente do Windows para usar o backend do Render. Não coloque chaves Gemini, Fish Audio ou Supabase no cliente.
+- No desenvolvimento, o desktop usa `ATLAS_API_URL` se definida ou `http://127.0.0.1:8000`. No executável empacotado, o runtime hook aponta para `https://atlas-ai-api-a58n.onrender.com`. Não coloque chaves Gemini, Fish Audio ou Supabase no cliente.
 - **Gravar pelo microfone:** grava até 60 segundos em WAV no desktop Windows, interrompe a gravação e envia o arquivo para transcrição cloud; o texto aparece no campo de mensagem para revisão antes do envio. O backend não mantém o áudio após a transcrição. A compatibilidade depende do dispositivo de entrada, das permissões do Windows e do backend Qt Multimedia disponível na máquina. Esta captura ainda não é uma conversa de voz contínua em tempo real.
 - Para usar as rotas no Render, configure `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, `FISH_AUDIO_API_KEY` e `FISH_AUDIO_REFERENCE_ID`, e aplique as migrations necessárias no Supabase. O aplicativo e a API ainda precisam ser testados e implantados no ambiente real.
