@@ -42,13 +42,14 @@ async def _post_auth(
     payload: dict[str, Any],
     *,
     client: httpx.AsyncClient | None = None,
+    query_params: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     headers = _auth_headers(settings)
     url = f"{settings.supabase_url.rstrip('/')}/auth/v1/{path.lstrip('/')}"
 
     async def send(http_client: httpx.AsyncClient) -> dict[str, Any]:
         try:
-            response = await http_client.post(url, headers=headers, json=payload)
+            response = await http_client.post(url, headers=headers, json=payload, params=query_params)
         except httpx.TimeoutException as exc:
             raise HTTPException(
                 status_code=503,
@@ -61,9 +62,32 @@ async def _post_auth(
             ) from exc
 
         if response.status_code in (400, 401, 422):
+            try:
+                error_data = response.json()
+            except ValueError:
+                error_data = {}
+            error_text = " ".join(
+                str(error_data.get(key, ""))
+                for key in ("msg", "message", "error_description", "error")
+            ).lower() if isinstance(error_data, dict) else ""
+            if "email not confirmed" in error_text or "email_not_confirmed" in error_text:
+                raise HTTPException(
+                    status_code=403,
+                    detail="E-mail ainda não confirmado. Abra o link recebido e depois tente entrar novamente.",
+                )
+            if path.startswith("signup") and ("already registered" in error_text or "user already registered" in error_text):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Este e-mail já possui cadastro. Confirme a mensagem recebida ou entre na sua conta.",
+                )
+            if path.startswith("token"):
+                raise HTTPException(
+                    status_code=401,
+                    detail="E-mail ou senha incorretos. Se acabou de criar a conta, confirme o e-mail primeiro.",
+                )
             raise HTTPException(
-                status_code=401,
-                detail="Credenciais inválidas, conta não confirmada ou cadastro recusado.",
+                status_code=400,
+                detail="O Supabase recusou a solicitação. Verifique o e-mail, a senha e as configurações de autenticação.",
             )
         if response.status_code not in (200, 201):
             raise HTTPException(
@@ -128,6 +152,9 @@ async def sign_up_with_password(
         settings,
         {"email": email.strip(), "password": password},
         client=client,
+        query_params={
+            "redirect_to": settings.auth_email_redirect_url.strip()
+        } if settings.auth_email_redirect_url.strip() else None,
     )
     user = data.get("user") if isinstance(data.get("user"), dict) else data
     access_token = data.get("access_token")
