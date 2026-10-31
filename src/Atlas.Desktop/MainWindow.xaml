@@ -42,7 +42,7 @@
                            FontSize="24" FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            Foreground="{StaticResource AtlasTextBrush}"/>
-                <TextBlock Text="Converse por texto ou use o modo de voz contínuo."
+                <TextBlock Text="Converse por texto ou fale em turnos com o Atlas."
                            FontSize="11" HorizontalAlignment="Center"
                            Foreground="{StaticResource AtlasMutedBrush}"/>
             </StackPanel>
