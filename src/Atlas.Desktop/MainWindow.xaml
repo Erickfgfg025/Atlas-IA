@@ -4,57 +4,48 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Atlas.Desktop.Controls"
     Title="Atlas">
-    <Grid Background="{StaticResource AtlasBackgroundBrush}" Padding="22" RowSpacing="14">
+    <Grid x:Name="RootLayout" Background="{StaticResource AtlasBackgroundBrush}" Padding="22" RowSpacing="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
         <Grid>
             <StackPanel Spacing="3">
                 <TextBlock Text="ATLAS" FontSize="17" FontWeight="Bold" CharacterSpacing="180"/>
                 <TextBlock Text="ASSISTENTE PESSOAL" FontSize="9" Foreground="{StaticResource AtlasMutedBrush}" CharacterSpacing="140"/>
             </StackPanel>
-            <Border HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Background="#202329" BorderBrush="#343740" BorderThickness="1"
-                    CornerRadius="12" Padding="10,6">
+            <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#202329"
+                    BorderBrush="#343740" BorderThickness="1" CornerRadius="12" Padding="10,6">
                 <StackPanel Orientation="Horizontal" Spacing="7">
                     <Ellipse Width="7" Height="7" Fill="#65C18C"/>
                     <TextBlock Text="LOCAL" FontSize="10" Foreground="{StaticResource AtlasMutedBrush}"/>
                 </StackPanel>
             </Border>
         </Grid>
-
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
             <controls:OrganicOrb Width="190" Height="190"/>
-            <TextBlock Text="PRONTO PARA AJUDAR" HorizontalAlignment="Center"
-                       FontSize="10" CharacterSpacing="160" Foreground="{StaticResource AtlasMutedBrush}"/>
-            <TextBlock Text="O que vamos fazer?" HorizontalAlignment="Center"
-                       FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AtlasTextBrush}"/>
+            <TextBlock Text="PRONTO PARA AJUDAR" HorizontalAlignment="Center" FontSize="10"
+                       CharacterSpacing="160" Foreground="{StaticResource AtlasMutedBrush}"/>
+            <TextBlock Text="O que vamos fazer?" HorizontalAlignment="Center" FontSize="24"
+                       FontWeight="SemiBold" Foreground="{StaticResource AtlasTextBrush}"/>
             <TextBlock Text="A base do Atlas está sendo preparada. A conversa com IA será ativada após a integração segura dos provedores."
-                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="330"
-                       TextAlignment="Center" Foreground="{StaticResource AtlasMutedBrush}" FontSize="12"/>
+                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="330" TextAlignment="Center"
+                       Foreground="{StaticResource AtlasMutedBrush}" FontSize="12"/>
         </StackPanel>
-
-        <Border Grid.Row="2" Background="{StaticResource AtlasSurfaceBrush}"
-                BorderBrush="#30333A" BorderThickness="1" CornerRadius="16" Padding="14">
+        <Border Grid.Row="2" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
+                BorderThickness="1" CornerRadius="16" Padding="14">
             <StackPanel Spacing="12">
-                <TextBlock Text="PREFERÊNCIAS" FontSize="10" CharacterSpacing="150"
-                           Foreground="{StaticResource AtlasMutedBrush}"/>
-                <ToggleSwitch Header="Permitir solicitações à nuvem (Gemini)"
-                              IsOn="{Binding EnableCloudRequests, Mode=TwoWay}"/>
-                <ToggleSwitch Header="Iniciar com o Windows (configuração futura)"
-                              IsOn="{Binding StartWithWindows, Mode=TwoWay}"/>
-                <ToggleSwitch Header="Manter janela sempre visível"
-                              IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
+                <TextBlock Text="PREFERÊNCIAS" FontSize="10" CharacterSpacing="150" Foreground="{StaticResource AtlasMutedBrush}"/>
+                <ToggleSwitch Header="Permitir solicitações à nuvem (Gemini)" IsOn="{Binding EnableCloudRequests, Mode=TwoWay}"/>
+                <ToggleSwitch Header="Iniciar com o Windows (configuração futura)" IsOn="{Binding StartWithWindows, Mode=TwoWay}"/>
+                <ToggleSwitch Header="Manter janela sempre visível" IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
                 <Button Content="Salvar preferências" Command="{Binding SaveSettingsCommand}"
                         HorizontalAlignment="Right" CornerRadius="10"
                         Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
             </StackPanel>
         </Border>
-
         <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="11"
                    Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
     </Grid>
