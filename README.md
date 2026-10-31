@@ -2,7 +2,7 @@
 
 Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interface WinUI 3. O Atlas foi projetado para operar localmente sempre que possível, com provedores de IA intercambiáveis e automação do Windows protegida por permissões explícitas.
 
-> **Estado desta branch:** fundação arquitetural e primeira revisão da experiência principal. A interface concentra a conversa em uma tela e mantém preferências em um diálogo separado. O modo de voz contínuo ainda não está implementado; a próxima etapa adicionará captura, transcrição e síntese com interrupção de fala.
+> **Estado desta branch:** fundação arquitetural e primeira revisão da experiência principal. A interface concentra a conversa em uma tela e mantém preferências em um diálogo separado. O modo de voz possui uma primeira integração nativa do Windows para reconhecimento pt-BR e síntese de fala; ainda precisa de validação em hardware real, permissões e ajustes de interrupção/eco. A animação roxa atual é vetorial provisória; o GIF original ainda precisa ser adicionado como ativo do projeto.
 
 ## Stack
 
@@ -71,7 +71,11 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 - [x] Abstrações iniciais para provedores e memória
 - [x] CI Windows para build e testes
 - [ ] Integrar o GIF Sound Wave fornecido como ativo final
-- [ ] Modo de voz contínuo (captura, STT, TTS, streaming e barge-in)
+- [x] Primeira integração de voz Windows (SpeechRecognizer pt-BR + SpeechSynthesizer)
+- [x] Fluxo de conversa por voz conectado ao roteador de modelos
+- [x] Interrupção da resposta falada ao detectar nova fala (barge-in inicial)
+- [ ] Validar captura e síntese em hardware Windows real e configurar permissões de microfone no empacotamento
+- [ ] Integrar o arquivo GIF Sound Wave original como ativo final (a interface usa animação vetorial provisória)
 - [ ] Persistência SQLite real
 - [ ] ModelRouter Gemini/Ollama com validação de erros
 - [ ] Adaptador Hermes
