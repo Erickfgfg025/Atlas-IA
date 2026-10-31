@@ -1,0 +1,47 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Domain", "src\Atlas.Domain\Atlas.Domain.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Contracts", "src\Atlas.Contracts\Atlas.Contracts.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Application", "src\Atlas.Application\Atlas.Application.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Infrastructure", "src\Atlas.Infrastructure\Atlas.Infrastructure.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000004}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.AI", "src\Atlas.AI\Atlas.AI.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.AgentHost", "src\Atlas.AgentHost\Atlas.AgentHost.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000006}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.WindowsBridge", "src\Atlas.WindowsBridge\Atlas.WindowsBridge.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000007}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Memory", "src\Atlas.Memory\Atlas.Memory.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000008}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Audio", "src\Atlas.Audio\Atlas.Audio.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000009}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Security", "src\Atlas.Security\Atlas.Security.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000010}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.Desktop", "src\Atlas.Desktop\Atlas.Desktop.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000011}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atlas.UnitTests", "tests\Atlas.UnitTests\Atlas.UnitTests.csproj", "{0A8E40E1-62E0-45E5-A4A4-000000000012}"
+EndProject
+Global
+  GlobalSection(SolutionConfigurationPlatforms) = preSolution
+    Debug|Any CPU = Debug|Any CPU
+    Release|Any CPU = Release|Any CPU
+  EndGlobalSection
+  GlobalSection(ProjectConfigurationPlatforms) = postSolution
+    {0A8E40E1-62E0-45E5-A4A4-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4/000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+    {0A8E40E1-62E0-45E5-A4A4-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+  EndGlobalSection
+EndGlobal

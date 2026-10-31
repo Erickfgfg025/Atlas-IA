@@ -1,0 +1,55 @@
+<Window
+    x:Class="Atlas.Desktop.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Atlas.Desktop.Controls"
+    Title="Atlas">
+    <Grid Background="{StaticResource AtlasBackgroundBrush}" Padding="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel Spacing="3">
+                <TextBlock Text="ATLAS" FontSize="17" FontWeight="Bold" CharacterSpacing="180"/>
+                <TextBlock Text="ASSISTENTE PESSOAL" FontSize="9" Foreground="{StaticResource AtlasMutedBrush}" CharacterSpacing="140"/>
+            </StackPanel>
+            <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Background="#202329" BorderBrush="#343740" BorderThickness="1"
+                    CornerRadius="12" Padding="10,6">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Ellipse Width="7" Height="7" Fill="#65C18C"/>
+                    <TextBlock Text="LOCAL" FontSize="10" Foreground="{StaticResource AtlasMutedBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+            <controls:OrganicOrb Width="190" Height="190"/>
+            <TextBlock Text="PRONTO PARA AJUDAR" HorizontalAlignment="Center"
+                       FontSize="10" CharacterSpacing="160" Foreground="{StaticResource AtlasMutedBrush}"/>
+            <TextBlock Text="O que vamos fazer?" HorizontalAlignment="Center"
+                       FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AtlasTextBrush}"/>
+            <TextBlock Text="Converse com o Atlas ou peça uma ação no computador."
+                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="300"
+                       TextAlignment="Center" Foreground="{StaticResource AtlasMutedBrush}" FontSize="12"/>
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="{StaticResource AtlasSurfaceBrush}"
+                BorderBrush="#30333A" BorderThickness="1" CornerRadius="16" Padding="12">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="44"/>
+                </Grid.ColumnDefinitions>
+                <TextBox PlaceholderText="Escreva um comando..." Background="Transparent"
+                         BorderThickness="0" VerticalContentAlignment="Center"
+                         Foreground="{StaticResource AtlasTextBrush}"/>
+                <Button Grid.Column="1" Content="↑" FontSize="18" CornerRadius="12"
+                        Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
