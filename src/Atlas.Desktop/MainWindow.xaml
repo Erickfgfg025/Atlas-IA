@@ -94,7 +94,7 @@
                 <Button x:Name="VoiceButton" Grid.Column="2" Content="Voz"
                         Click="VoiceButton_Click" MinHeight="52" MinWidth="84"
                         CornerRadius="14"
-                        ToolTipService.ToolTip="O modo de voz contínuo será integrado na próxima etapa."/>
+                        ToolTipService.ToolTip="Ativar ou pausar conversa por voz. Fale durante a resposta para interromper."/>
             </Grid>
         </Grid>
 
