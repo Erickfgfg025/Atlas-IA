@@ -43,8 +43,8 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 await using var connection = await OpenConnectionAsync(cancellationToken);
                 await using var command = connection.CreateCommand();
                 command.CommandText = """
-                    INSERT INTO memories (id, category, title, relative_path, created_utc, updated_utc)
-                    VALUES ($id, $category, $title, $path, $created, $updated);
+                    INSERT INTO memories (id, category, title, content, relative_path, created_utc, updated_utc)
+                    VALUES ($id, $category, $title, $content, $path, $created, $updated);
                     """;
                 AddParameters(command, entry, GetRelativePath(path));
                 await command.ExecuteNonQueryAsync(cancellationToken);
@@ -130,8 +130,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             {
                 await using var connection = await OpenConnectionAsync(cancellationToken);
                 await using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE memories SET title=$title, relative_path=$path, updated_utc=$updated WHERE id=$id;";
+                command.CommandText = "UPDATE memories SET title=$title, content=$content, relative_path=$path, updated_utc=$updated WHERE id=$id;";
                 command.Parameters.AddWithValue("$title", updated.Title);
+                command.Parameters.AddWithValue("$content", updated.Content);
                 command.Parameters.AddWithValue("$path", GetRelativePath(newPath));
                 command.Parameters.AddWithValue("$updated", updated.UpdatedAt.ToString("O"));
                 command.Parameters.AddWithValue("$id", id.ToString("D"));
@@ -197,7 +198,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 await using var insert = connection.CreateCommand();
                 insert.Transaction = (SqliteTransaction)transaction;
                 insert.CommandText = """
-                    INSERT OR REPLACE INTO memories (id, category, title, relative_path, created_utc, updated_utc)
+                    INSERT OR REPLACE INTO memories (id, category, title, content, relative_path, created_utc, updated_utc)
                     VALUES ($id, $category, $title, $path, $created, $updated);
                     """;
                 AddParameters(insert, item.Entry, item.Path);
@@ -220,6 +221,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 id TEXT PRIMARY KEY,
                 category TEXT NOT NULL,
                 title TEXT NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
                 relative_path TEXT NOT NULL UNIQUE,
                 created_utc TEXT NOT NULL,
                 updated_utc TEXT NOT NULL
@@ -319,6 +321,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         command.Parameters.AddWithValue("$id", entry.Id.ToString("D"));
         command.Parameters.AddWithValue("$category", entry.Category.ToString());
         command.Parameters.AddWithValue("$title", entry.Title);
+        command.Parameters.AddWithValue("$content", entry.Content);
         command.Parameters.AddWithValue("$path", relativePath);
         command.Parameters.AddWithValue("$created", entry.CreatedAt.ToString("O"));
         command.Parameters.AddWithValue("$updated", entry.UpdatedAt.ToString("O"));
