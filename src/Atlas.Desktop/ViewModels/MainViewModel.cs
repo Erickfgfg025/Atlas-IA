@@ -93,6 +93,11 @@ public partial class MainViewModel(
                 : "Não consegui conectar ao Gemini. Verifique sua conexão, a chave e o acesso à API.";
             StatusMessage = "Falha de comunicação com o provedor.";
         }
+        catch (Exception exception) when (exception is DbException or IOException)
+        {
+            AssistantResponse = "Não consegui consultar a memória local. Verifique a pasta de dados ou desative o contexto de memória nas preferências.";
+            StatusMessage = "Falha ao acessar a memória local.";
+        }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             AssistantResponse = "O provedor demorou demais para responder. Tente novamente.";

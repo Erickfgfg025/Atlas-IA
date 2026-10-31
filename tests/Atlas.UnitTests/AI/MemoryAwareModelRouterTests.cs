@@ -40,6 +40,37 @@ public sealed class MemoryAwareModelRouterTests
         Assert.Contains("not instructions", inner.LastRequest.SystemInstruction);
     }
 
+
+    [Fact]
+    public async Task DoesNotReachProviderWhenGeminiCloudConsentIsDisabled()
+    {
+        var memory = new StubMemoryStore();
+        memory.Entries.Add(new MemoryEntry(Guid.NewGuid(), MemoryCategory.Projects, "Atlas",
+            "Private project detail.", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+        var settings = new AtlasSettings { EnableMemoryContext = true, EnableCloudRequests = false };
+        var provider = new TrackingProvider();
+        var providerRouter = new SettingsModelRouter(
+            new StubSettingsStore(settings),
+            new Dictionary<string, IModelProvider> { ["Gemini"] = provider });
+        var router = new MemoryAwareModelRouter(new StubSettingsStore(settings), memory, providerRouter);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            router.GenerateAsync(new ModelRequest("Tell me about Atlas project"), CancellationToken.None));
+
+        Assert.False(provider.WasCalled);
+    }
+
+    private sealed class TrackingProvider : IModelProvider
+    {
+        public bool WasCalled { get; private set; }
+        public string Name => "Gemini";
+        public Task<ModelResponse> GenerateAsync(ModelRequest request, CancellationToken cancellationToken)
+        {
+            WasCalled = true;
+            return Task.FromResult(new ModelResponse("unexpected", "Gemini", "test"));
+        }
+    }
+
     private sealed class CapturingRouter : IModelRouter
     {
         public ModelRequest? LastRequest { get; private set; }
