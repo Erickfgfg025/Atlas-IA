@@ -4,174 +4,105 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Atlas.Desktop.Controls"
     Title="Atlas">
-    <Grid x:Name="RootLayout" Background="{StaticResource AtlasBackgroundBrush}" Padding="22" RowSpacing="14">
+    <Grid x:Name="RootLayout"
+          Background="{StaticResource AtlasBackgroundBrush}"
+          Padding="28,22"
+          RowSpacing="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+
         <Grid>
-            <StackPanel Spacing="3">
+            <StackPanel Spacing="2">
                 <TextBlock Text="ATLAS" FontSize="17" FontWeight="Bold" CharacterSpacing="180"/>
-                <TextBlock Text="ASSISTENTE PESSOAL" FontSize="9" Foreground="{StaticResource AtlasMutedBrush}" CharacterSpacing="140"/>
+                <TextBlock Text="ASSISTENTE PESSOAL" FontSize="9"
+                           Foreground="{StaticResource AtlasMutedBrush}" CharacterSpacing="140"/>
             </StackPanel>
-            <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#202329"
-                    BorderBrush="#343740" BorderThickness="1" CornerRadius="12" Padding="10,6">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Ellipse Width="7" Height="7" Fill="#65C18C"/>
-                    <TextBlock Text="LOCAL / PRIVADO" FontSize="10" Foreground="{StaticResource AtlasMutedBrush}"/>
-                </StackPanel>
-            </Border>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Spacing="8">
+                <Ellipse Width="7" Height="7" Fill="#65C18C"/>
+                <TextBlock Text="PRONTO" FontSize="10"
+                           Foreground="{StaticResource AtlasMutedBrush}"/>
+                <Button x:Name="SettingsButton" Content="Configurações"
+                        Click="OpenSettings_Click" CornerRadius="10"
+                        Background="#202329" BorderBrush="#343740" BorderThickness="1"/>
+            </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" RowSpacing="12">
+        <Grid Grid.Row="1" RowSpacing="16">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
-                <controls:OrganicOrb Width="112" Height="112"/>
-                <StackPanel VerticalAlignment="Center" Spacing="5">
-                    <TextBlock Text="ATLAS ESTÁ PRONTO" FontSize="10" CharacterSpacing="130"
-                               Foreground="{StaticResource AtlasMutedBrush}"/>
-                    <TextBlock Text="O que vamos fazer?" FontSize="23" FontWeight="SemiBold"
-                               Foreground="{StaticResource AtlasTextBrush}"/>
-                    <TextBlock Text="Sua conversa é processada pelo provedor escolhido."
-                               FontSize="11" Foreground="{StaticResource AtlasMutedBrush}"/>
-                </StackPanel>
+
+            <StackPanel HorizontalAlignment="Center" Spacing="2">
+                <controls:OrganicOrb Width="min(520, 72vw)" Height="150"/>
+                <TextBlock Text="Estou aqui. O que vamos fazer?"
+                           FontSize="24" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           Foreground="{StaticResource AtlasTextBrush}"/>
+                <TextBlock Text="Converse por texto agora. O modo de voz contínuo está na próxima etapa."
+                           FontSize="11" HorizontalAlignment="Center"
+                           Foreground="{StaticResource AtlasMutedBrush}"/>
             </StackPanel>
 
-            <Border Grid.Row="1" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
-                    BorderThickness="1" CornerRadius="14" Padding="12">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="RESPOSTA DO ATLAS" FontSize="9" CharacterSpacing="140"
+            <Border Grid.Row="1" Background="{StaticResource AtlasSurfaceBrush}"
+                    BorderBrush="#30333A" BorderThickness="1"
+                    CornerRadius="18" Padding="18">
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="CONVERSA" FontSize="9" CharacterSpacing="150"
                                Foreground="{StaticResource AtlasMutedBrush}"/>
-                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
-                            <TextBlock Text="{Binding AssistantResponse}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource AtlasTextBrush}" FontSize="13"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding AssistantResponse}"
+                                   TextWrapping="Wrap" FontSize="14" LineHeight="22"
+                                   Foreground="{StaticResource AtlasTextBrush}"/>
                     </ScrollViewer>
-                    <Button Content="Salvar última conversa na memória local"
-                            Command="{Binding SaveLastExchangeCommand}"
-                            HorizontalAlignment="Right" CornerRadius="9"/>
-                </StackPanel>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                HorizontalAlignment="Right" Spacing="8">
+                        <Button Content="Salvar na memória"
+                                Command="{Binding SaveLastExchangeCommand}"
+                                CornerRadius="9"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="10"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AtlasMutedBrush}"/>
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <Grid Grid.Row="2" VerticalAlignment="Bottom" ColumnSpacing="8">
+            <Grid Grid.Row="2" ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox Text="{Binding ChatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         PlaceholderText="Escreva sua mensagem..." AcceptsReturn="True" MinHeight="48"
-                         MaxHeight="110" TextWrapping="Wrap" CornerRadius="12"/>
-                <Button Grid.Column="1" Content="Enviar" Command="{Binding SendMessageCommand}"
-                        VerticalAlignment="Bottom" MinHeight="48" CornerRadius="12"
-                        Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
+                         PlaceholderText="Escreva para o Atlas..."
+                         AcceptsReturn="True" MinHeight="52" MaxHeight="120"
+                         TextWrapping="Wrap" CornerRadius="14"
+                         VerticalContentAlignment="Center"/>
+                <Button Grid.Column="1" Content="Enviar"
+                        Command="{Binding SendMessageCommand}"
+                        MinHeight="52" MinWidth="92" CornerRadius="14"
+                        Background="{StaticResource AtlasAccentBrush}"
+                        Foreground="#17100A"/>
+                <Button Grid.Column="2" Content="Voz"
+                        IsEnabled="False" MinHeight="52" MinWidth="64"
+                        CornerRadius="14"
+                        ToolTipService.ToolTip="O modo de voz contínuo será integrado na próxima etapa."/>
             </Grid>
-            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="10"
-                       Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
         </Grid>
 
-        <Border Grid.Row="2" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
-                BorderThickness="1" CornerRadius="16" Padding="14">
-            <StackPanel Spacing="10">
-                <TextBlock Text="PROVEDOR E PRIVACIDADE" FontSize="10" CharacterSpacing="150"
-                           Foreground="{StaticResource AtlasMutedBrush}"/>
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Provedor" VerticalAlignment="Center" Foreground="{StaticResource AtlasMutedBrush}"/>
-                    <ComboBox Grid.Column="1" SelectedValue="{Binding PreferredProvider, Mode=TwoWay}"
-                              SelectedValuePath="Content" MinWidth="130">
-                        <ComboBoxItem Content="Gemini"/>
-                        <ComboBoxItem Content="Ollama"/>
-                    </ComboBox>
-                    <ToggleSwitch Grid.Column="2" Header="Permitir nuvem"
-                                  IsOn="{Binding EnableCloudRequests, Mode=TwoWay}"/>
-                </Grid>
-                <PasswordBox x:Name="GeminiApiKey" PlaceholderText="Chave da API Gemini (armazenada protegida)"
-                             PasswordRevealMode="Peek"/>
-                <Button Content="Salvar chave Gemini" Click="SaveGeminiKey_Click"
-                        HorizontalAlignment="Right" CornerRadius="10"/>
-                <ToggleSwitch Header="Usar memórias locais como contexto (opcional)"
-                              IsOn="{Binding EnableMemoryContext, Mode=TwoWay}"/>
-                <ToggleSwitch Header="Manter janela sempre visível"
-                              IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
-                <Button Content="Salvar preferências" Command="{Binding SaveSettingsCommand}"
-                        HorizontalAlignment="Right" CornerRadius="10"
-                        Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
-            </StackPanel>
-        </Border>
-        <Border Grid.Row="3" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
-                BorderThickness="1" CornerRadius="16" Padding="14">
-            <StackPanel Spacing="9">
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="MEMÓRIA LOCAL" FontSize="10" CharacterSpacing="150"
-                                   Foreground="{StaticResource AtlasMutedBrush}"/>
-                        <TextBlock Text="Suas notas, sob seu controle" FontSize="14" FontWeight="SemiBold"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="Atualizar" Command="{Binding RefreshMemoriesCommand}"
-                            VerticalAlignment="Center" CornerRadius="9"/>
-                    <Button Grid.Column="2" Content="Reconstruir índice" Command="{Binding RebuildMemoryIndexCommand}"
-                            VerticalAlignment="Center" CornerRadius="9"/>
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox Text="{Binding MemorySearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="Pesquisar memórias..." MinHeight="38"/>
-                    <Button Grid.Column="1" Content="Buscar" Command="{Binding RefreshMemoriesCommand}"
-                            CornerRadius="9"/>
-                </Grid>
-                <Grid ColumnSpacing="10" Height="190">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.9*"/>
-                        <ColumnDefinition Width="1.1*"/>
-                    </Grid.ColumnDefinitions>
-                    <ListView ItemsSource="{Binding Memories}" SelectedItem="{Binding SelectedMemory, Mode=TwoWay}"
-                              SelectionMode="Single" Background="#15171B" CornerRadius="9">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Spacing="3" Padding="4">
-                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
-                                               FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Category}" FontSize="10"
-                                               Foreground="{StaticResource AtlasMutedBrush}"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                    <StackPanel Grid.Column="1" Spacing="6">
-                        <TextBox Text="{Binding SelectedMemoryTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 PlaceholderText="Título da memória"/>
-                        <TextBox Text="{Binding SelectedMemoryContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 PlaceholderText="Conteúdo" AcceptsReturn="True" TextWrapping="Wrap"
-                                 MinHeight="95"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="7">
-                            <Button Content="Salvar edição" Command="{Binding SaveSelectedMemoryCommand}"
-                                    CornerRadius="9"/>
-                            <Button Content="Excluir" Click="DeleteMemory_Click" CornerRadius="9"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-        </Border>
-        <TextBlock Grid.Row="4" Text="O Gemini envia o conteúdo da conversa à API do Google. O Ollama processa localmente."
-                   FontSize="10" Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="2"
+                   Text="Privacidade em primeiro lugar · suas memórias permanecem neste computador."
+                   FontSize="10" HorizontalAlignment="Center"
+                   Foreground="{StaticResource AtlasMutedBrush}"/>
     </Grid>
 </Window>
