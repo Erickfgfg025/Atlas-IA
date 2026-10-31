@@ -28,7 +28,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             ["Gemini"] = new GeminiModelProvider(_httpClient, secretStore),
             ["Ollama"] = new OllamaModelProvider(
-                _httpClient, new Uri(AtlasSettings.DefaultOllamaEndpoint), AtlasSettings.DefaultOllamaModel)
+                _httpClient, new Uri(AtlasSettings.DefaultOllamaEndpoint), AtlasSettings.DefaultOllamaModel),
+            ["Hermes"] = new HermesAgentProvider()
         };
         var memoryStore = new MarkdownMemoryStore(MemoryVaultOptions.CreateDefault());
         IModelRouter providerRouter = new SettingsModelRouter(settingsStore, providers);
