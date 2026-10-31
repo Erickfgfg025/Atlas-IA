@@ -107,6 +107,8 @@ public partial class MainViewModel(
                 new ModelRequest(prompt, History: _history.ToArray()), cancellationToken);
             _history.Add(new ModelMessage("user", prompt));
             _history.Add(new ModelMessage("assistant", response.Content));
+            if (_history.Count > 40)
+                _history.RemoveRange(0, _history.Count - 40);
             AssistantResponse = response.Content;
             StatusMessage = $"Resposta recebida de {response.Provider} · {response.Model}";
         }
