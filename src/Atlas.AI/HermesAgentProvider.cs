@@ -121,10 +121,12 @@ public sealed class HermesAgentProvider : IModelProvider
                 startInfo.Environment[pair.Key] = pair.Value;
 
         using var process = new Process { StartInfo = startInfo };
+        var processStarted = false;
         try
         {
             if (!process.Start())
                 throw new InvalidOperationException("Não foi possível iniciar o processo isolado do Hermes.");
+            processStarted = true;
 
             await process.StandardInput.WriteAsync(payload.AsMemory(), cancellationToken);
             process.StandardInput.Close();
@@ -177,7 +179,7 @@ public sealed class HermesAgentProvider : IModelProvider
         }
         finally
         {
-            if (!process.HasExited) TryKill(process);
+            if (processStarted && !process.HasExited) TryKill(process);
         }
     }
 
