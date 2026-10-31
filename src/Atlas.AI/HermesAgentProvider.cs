@@ -187,9 +187,10 @@ public sealed class HermesAgentProvider : IModelProvider
     {
         var builder = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(request.SystemInstruction))
-            builder.AppendLine(request.SystemInstruction);
+            builder.AppendLine(request.SystemInstruction.Length > 4_000
+                ? request.SystemInstruction[..4_000] : request.SystemInstruction);
 
-        foreach (var message in request.History ?? [])
+        foreach (var message in (request.History ?? []).TakeLast(12))
         {
             if (string.IsNullOrWhiteSpace(message.Content)) continue;
             builder.Append(message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
