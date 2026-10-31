@@ -110,6 +110,7 @@ public sealed class VoiceInteractionService : IAsyncDisposable
 
     private void StopSpeech()
     {
+        _player.MediaEnded -= OnMediaEnded;
         _player.Pause();
         _player.Source = null;
         _speechStream?.Dispose();
