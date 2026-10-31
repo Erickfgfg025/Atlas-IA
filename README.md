@@ -78,6 +78,7 @@ O adaptador executa o Hermes em processo filho encerrável, transmite somente va
 - [x] Solução modular e projetos iniciais
 - [x] Shell WinUI 3 com tema escuro e tela principal simplificada
 - [x] Preferências recolhidas em diálogo
+- [x] Gerenciador de memória local em diálogo: busca, edição, exclusão com confirmação explícita e reconstrução do índice
 - [x] Animação vetorial de ondas sonoras provisória
 - [x] Configurações locais tipadas e chave protegida pelo Windows
 - [x] Abstrações iniciais para provedores e memória
@@ -93,7 +94,7 @@ O adaptador executa o Hermes em processo filho encerrável, transmite somente va
 - [x] Base inicial de abertura de URLs HTTP(S) com confirmação explícita e sem execução arbitrária de comandos
 - [x] Inicialização automática por usuário e opção sempre visível
 - [ ] Automação segura do Windows (demais ferramentas tipadas e auditadas)
-- [x] Workflow de empacotamento Windows x64 configurado (artefato ainda não publicado)
+- [x] Workflow de empacotamento Windows x64 executado automaticamente em atualizações da branch de desenvolvimento (artefato depende da conclusão do job)
 - [ ] Assinatura de código e atualização automática
 
 A presença de um contrato ou projeto não significa que a integração externa esteja operacional. Cada integração será marcada como concluída somente após implementação e testes verificáveis.
