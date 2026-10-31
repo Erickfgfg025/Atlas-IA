@@ -86,9 +86,8 @@ public sealed partial class MainWindow : Window
                 await _voice.StopListeningAsync();
                 await _viewModel.SubmitVoiceTextAsync(text);
                 if (!_voiceEnabled) return;
+                await _voice.StartListeningAsync();
                 await _voice.SpeakAsync(_viewModel.AssistantResponse);
-                if (_voiceEnabled)
-                    await _voice.StartListeningAsync();
             }
             catch (Exception)
             {
