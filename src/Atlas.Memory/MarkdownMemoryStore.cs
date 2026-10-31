@@ -123,7 +123,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             var metadata = await FindMetadataAsync(id, cancellationToken) ?? throw new KeyNotFoundException($"Memory '{id}' was not found.");
             var oldPath = ResolveRelativePath(metadata.Value.Path);
             var updated = new MemoryEntry(id, metadata.Value.Category, title.Trim(), content.Trim(), metadata.Value.Created, DateTimeOffset.UtcNow);
-            var newPath = GetPath(updated);
+            var newPath = Path.Combine(_vaultRoot, updated.Category.ToString().ToLowerInvariant(), id.ToString("N") + "-" + Guid.NewGuid().ToString("N") + ".md");
             await WriteMarkdownAsync(newPath, updated, cancellationToken);
             try
             {
@@ -139,10 +139,10 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             }
             catch
             {
-                if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase)) TryDelete(newPath);
+                TryDelete(newPath);
                 throw;
             }
-            if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase)) TryDelete(oldPath);
+            TryDelete(oldPath);
             return updated;
         }
         finally { _gate.Release(); }
@@ -192,7 +192,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 clear.CommandText = "DELETE FROM memories;";
                 await clear.ExecuteNonQueryAsync(cancellationToken);
             }
-            foreach (var item in recovered)
+            foreach (var item in recovered.OrderBy(x => x.Entry.UpdatedAt))
             {
                 await using var insert = connection.CreateCommand();
                 insert.Transaction = (SqliteTransaction)transaction;
@@ -275,8 +275,11 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     private string ResolveRelativePath(string relative)
     {
         var full = Path.GetFullPath(Path.Combine(_vaultRoot, relative));
-        var prefix = _vaultRoot.EndsWith(Path.DirectorySeparatorChar) ? _vaultRoot : _vaultRoot + Path.DirectorySeparatorChar;
-        if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Memory index contains a path outside the vault.");
+        var resolvedRelative = Path.GetRelativePath(_vaultRoot, full);
+        if (Path.IsPathRooted(resolvedRelative) ||
+            resolvedRelative == ".." ||
+            resolvedRelative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new InvalidDataException("Memory index contains a path outside the vault.");
         return full;
     }
 
@@ -314,6 +317,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             string? Value(string key) => header.FirstOrDefault(x => x.StartsWith(key + ": ", StringComparison.Ordinal))?[(key.Length + 2)..];
             if (!Guid.TryParse(Value("atlas_id"), out var id) ||
                 !Enum.TryParse<MemoryCategory>(Value("category"), out var category) ||
+                !Enum.IsDefined(category) ||
                 Value("title_base64") is not { } encoded ||
                 Value("created_utc") is not { } created ||
                 Value("updated_utc") is not { } updated) return null;
