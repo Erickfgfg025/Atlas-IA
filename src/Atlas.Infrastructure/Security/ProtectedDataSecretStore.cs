@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using Atlas.Application.Security;
@@ -8,6 +9,7 @@ namespace Atlas.Infrastructure.Security;
 /// Stores secrets encrypted with Windows DPAPI, scoped to the current Windows user.
 /// The files are not portable to another Windows user or machine.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class ProtectedDataSecretStore : ISecretStore
 {
     private static readonly byte[] ApplicationEntropy = Encoding.UTF8.GetBytes("Atlas.Desktop.SecretStore.v1");
