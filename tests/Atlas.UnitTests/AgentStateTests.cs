@@ -1,4 +1,5 @@
 using Atlas.Domain.Agent;
+using Xunit;
 
 namespace Atlas.UnitTests;
 
