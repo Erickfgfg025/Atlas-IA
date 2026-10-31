@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup><ProjectReference Include="../Atlas.Application/Atlas.Application.csproj" /></ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <ProjectReference Include="../Atlas.Application/Atlas.Application.csproj" />
+  </ItemGroup>
 </Project>
