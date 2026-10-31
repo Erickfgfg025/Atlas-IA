@@ -42,7 +42,7 @@
                            FontSize="24" FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            Foreground="{StaticResource AtlasTextBrush}"/>
-                <TextBlock Text="Converse por texto agora. O modo de voz contínuo está na próxima etapa."
+                <TextBlock Text="Converse por texto ou use o modo de voz contínuo."
                            FontSize="11" HorizontalAlignment="Center"
                            Foreground="{StaticResource AtlasMutedBrush}"/>
             </StackPanel>
@@ -91,8 +91,8 @@
                         MinHeight="52" MinWidth="92" CornerRadius="14"
                         Background="{StaticResource AtlasAccentBrush}"
                         Foreground="#17100A"/>
-                <Button Grid.Column="2" Content="Voz"
-                        IsEnabled="False" MinHeight="52" MinWidth="64"
+                <Button x:Name="VoiceButton" Grid.Column="2" Content="Voz"
+                        Click="VoiceButton_Click" MinHeight="52" MinWidth="84"
                         CornerRadius="14"
                         ToolTipService.ToolTip="O modo de voz contínuo será integrado na próxima etapa."/>
             </Grid>
