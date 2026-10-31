@@ -36,9 +36,10 @@ public sealed partial class MainWindow : Window
 
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
     {
-        var provider = new ComboBox { MinWidth = 220, SelectedIndex = _viewModel.PreferredProvider == "Ollama" ? 1 : 0 };
+        var provider = new ComboBox { MinWidth = 220 };
         provider.Items.Add("Gemini");
         provider.Items.Add("Ollama");
+        provider.SelectedIndex = _viewModel.PreferredProvider == "Ollama" ? 1 : 0;
 
         var allowCloud = new ToggleSwitch
         {
