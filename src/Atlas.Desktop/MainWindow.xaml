@@ -10,6 +10,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid>
             <StackPanel Spacing="3">
@@ -108,7 +109,69 @@
                         Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
             </StackPanel>
         </Border>
-        <TextBlock Grid.Row="3" Text="O Gemini envia o conteúdo da conversa à API do Google. O Ollama processa localmente."
+        <Border Grid.Row="3" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
+                BorderThickness="1" CornerRadius="16" Padding="14">
+            <StackPanel Spacing="9">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="MEMÓRIA LOCAL" FontSize="10" CharacterSpacing="150"
+                                   Foreground="{StaticResource AtlasMutedBrush}"/>
+                        <TextBlock Text="Suas notas, sob seu controle" FontSize="14" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Atualizar" Command="{Binding RefreshMemoriesCommand}"
+                            VerticalAlignment="Center" CornerRadius="9"/>
+                    <Button Grid.Column="2" Content="Reconstruir índice" Command="{Binding RebuildMemoryIndexCommand}"
+                            VerticalAlignment="Center" CornerRadius="9"/>
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding MemorySearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Pesquisar memórias..." MinHeight="38"/>
+                    <Button Grid.Column="1" Content="Buscar" Command="{Binding RefreshMemoriesCommand}"
+                            CornerRadius="9"/>
+                </Grid>
+                <Grid ColumnSpacing="10" Height="190">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="0.9*"/>
+                        <ColumnDefinition Width="1.1*"/>
+                    </Grid.ColumnDefinitions>
+                    <ListView ItemsSource="{Binding Memories}" SelectedItem="{Binding SelectedMemory, Mode=TwoWay}"
+                              SelectionMode="Single" Background="#15171B" CornerRadius="9">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Spacing="3" Padding="4">
+                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                               FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Category}" FontSize="10"
+                                               Foreground="{StaticResource AtlasMutedBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBox Text="{Binding SelectedMemoryTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="Título da memória"/>
+                        <TextBox Text="{Binding SelectedMemoryContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="Conteúdo" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="95"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="7">
+                            <Button Content="Salvar edição" Command="{Binding SaveSelectedMemoryCommand}"
+                                    CornerRadius="9"/>
+                            <Button Content="Excluir" Click="DeleteMemory_Click" CornerRadius="9"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+        <TextBlock Grid.Row="4" Text="O Gemini envia o conteúdo da conversa à API do Google. O Ollama processa localmente."
                    FontSize="10" Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
     </Grid>
 </Window>

@@ -4,6 +4,7 @@ using Atlas.Application.Settings;
 using Atlas.Application.Memory;
 using Atlas.Desktop.ViewModels;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Atlas.Desktop;
 
@@ -26,11 +27,30 @@ public sealed partial class MainWindow : Window
         try
         {
             await _viewModel.InitializeAsync();
+            await _viewModel.RefreshMemoriesCommand.ExecuteAsync();
         }
         catch (Exception)
         {
             _viewModel.StatusMessage = "Não foi possível carregar as preferências locais.";
         }
+    }
+
+    private async void DeleteMemory_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedMemory is null) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = "Excluir memória?",
+            Content = $"A memória \"{_viewModel.SelectedMemory.Title}\" será removida do Atlas e do arquivo Markdown local. Esta ação não pode ser desfeita.",
+            PrimaryButtonText = "Excluir",
+            CloseButtonText = "Cancelar",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = RootLayout.XamlRoot
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync();
     }
 
     private async void SaveGeminiKey_Click(object sender, RoutedEventArgs e)

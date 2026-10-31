@@ -1,4 +1,5 @@
 using Atlas.Application.AI;
+using System.Collections.ObjectModel;
 using Atlas.Application.Security;
 using Atlas.Application.Memory;
 using System.Data.Common;
@@ -16,6 +17,8 @@ public partial class MainViewModel(
     IMemoryStore memoryStore) : ObservableObject
 {
     private readonly List<ModelMessage> _history = [];
+
+    public ObservableCollection<MemoryEntry> Memories { get; } = [];
 
     [ObservableProperty]
     public partial bool EnableCloudRequests { get; set; }
@@ -40,6 +43,24 @@ public partial class MainViewModel(
 
     [ObservableProperty]
     public partial string AssistantResponse { get; set; } = "Escolha um provedor, configure o acesso e envie sua primeira mensagem.";
+
+    [ObservableProperty]
+    public partial string MemorySearchQuery { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial MemoryEntry? SelectedMemory { get; set; }
+
+    [ObservableProperty]
+    public partial string SelectedMemoryTitle { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string SelectedMemoryContent { get; set; } = string.Empty;
+
+    partial void OnSelectedMemoryChanged(MemoryEntry? value)
+    {
+        SelectedMemoryTitle = value?.Title ?? string.Empty;
+        SelectedMemoryContent = value?.Content ?? string.Empty;
+    }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
@@ -129,6 +150,85 @@ public partial class MainViewModel(
         catch (Exception exception) when (exception is IOException or InvalidOperationException or ArgumentException or DbException)
         {
             StatusMessage = "Não foi possível salvar a memória local.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshMemoriesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var selectedId = SelectedMemory?.Id;
+            var entries = await memoryStore.SearchAsync(MemorySearchQuery, limit: 100, cancellationToken: cancellationToken);
+            Memories.Clear();
+            foreach (var entry in entries) Memories.Add(entry);
+            SelectedMemory = selectedId is null ? null : Memories.FirstOrDefault(x => x.Id == selectedId.Value);
+            StatusMessage = $"{Memories.Count} memória(s) encontrada(s).";
+        }
+        catch (Exception exception) when (exception is IOException or DbException or InvalidDataException)
+        {
+            StatusMessage = "Não foi possível carregar as memórias locais.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveSelectedMemoryAsync(CancellationToken cancellationToken)
+    {
+        if (SelectedMemory is null)
+        {
+            StatusMessage = "Selecione uma memória para editar.";
+            return;
+        }
+
+        try
+        {
+            var updated = await memoryStore.UpdateAsync(SelectedMemory.Id, SelectedMemoryTitle, SelectedMemoryContent, cancellationToken);
+            var index = Memories.ToList().FindIndex(x => x.Id == updated.Id);
+            if (index >= 0) Memories[index] = updated;
+            SelectedMemory = updated;
+            StatusMessage = "Memória atualizada no armazenamento local.";
+        }
+        catch (Exception exception) when (exception is IOException or DbException or ArgumentException or KeyNotFoundException)
+        {
+            StatusMessage = exception is ArgumentException
+                ? "Título ou conteúdo inválido. Confira os limites e tente novamente."
+                : "Não foi possível atualizar a memória local.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteSelectedMemoryAsync(CancellationToken cancellationToken)
+    {
+        if (SelectedMemory is null) return;
+        try
+        {
+            var id = SelectedMemory.Id;
+            if (await memoryStore.DeleteAsync(id, cancellationToken))
+            {
+                var item = Memories.FirstOrDefault(x => x.Id == id);
+                if (item is not null) Memories.Remove(item);
+                SelectedMemory = null;
+                StatusMessage = "Memória excluída do armazenamento local.";
+            }
+        }
+        catch (Exception exception) when (exception is IOException or DbException or InvalidDataException)
+        {
+            StatusMessage = "Não foi possível excluir a memória local.";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RebuildMemoryIndexAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var count = await memoryStore.RebuildIndexAsync(cancellationToken);
+            await RefreshMemoriesAsync(cancellationToken);
+            StatusMessage = $"Índice reconstruído. {count} arquivo(s) de memória indexado(s).";
+        }
+        catch (Exception exception) when (exception is IOException or DbException or InvalidDataException)
+        {
+            StatusMessage = "Não foi possível reconstruir o índice da memória.";
         }
     }
 
