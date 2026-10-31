@@ -25,35 +25,35 @@ public sealed class ProtectedDataSecretStore : ISecretStore
             "Secrets");
     }
 
-    public async Task SetAsync(
-        string key,
-        string secret,
-        CancellationToken cancellationToken = default)
+    public async Task SetAsync(string key, string secret, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(secret);
 
-        var path = GetPath(key);
-        var plaintext = Encoding.UTF8.GetBytes(secret);
-        byte[]? protectedBytes = null;
-        var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-
         await _gate.WaitAsync(cancellationToken);
+        string? temporaryPath = null;
+        byte[]? plaintext = null;
+        byte[]? protectedBytes = null;
         try
         {
             Directory.CreateDirectory(_directory);
-            protectedBytes = ProtectedData.Protect(
-                plaintext,
-                GetEntropy(key),
-                DataProtectionScope.CurrentUser);
+            var path = GetPath(key);
+            temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            plaintext = Encoding.UTF8.GetBytes(secret);
+            var entropy = GetEntropy(key);
+            try
+            {
+                protectedBytes = ProtectedData.Protect(
+                    plaintext, entropy, DataProtectionScope.CurrentUser);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(entropy);
+            }
 
             await using (var stream = new FileStream(
-                temporaryPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                bufferSize: 4096,
-                FileOptions.Asynchronous | FileOptions.WriteThrough))
+                temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                bufferSize: 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
             {
                 await stream.WriteAsync(protectedBytes, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
@@ -63,36 +63,40 @@ public sealed class ProtectedDataSecretStore : ISecretStore
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(plaintext);
+            if (plaintext is not null)
+                CryptographicOperations.ZeroMemory(plaintext);
             if (protectedBytes is not null)
                 CryptographicOperations.ZeroMemory(protectedBytes);
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-            _gate.Release();
+
+            try
+            {
+                if (temporaryPath is not null && File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
     }
 
-    public async Task<string?> GetAsync(
-        string key,
-        CancellationToken cancellationToken = default)
+    public async Task<string?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);
-        var path = GetPath(key);
-
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            var path = GetPath(key);
             if (!File.Exists(path))
                 return null;
 
             var protectedBytes = await File.ReadAllBytesAsync(path, cancellationToken);
             byte[]? plaintext = null;
+            var entropy = GetEntropy(key);
             try
             {
                 plaintext = ProtectedData.Unprotect(
-                    protectedBytes,
-                    GetEntropy(key),
-                    DataProtectionScope.CurrentUser);
+                    protectedBytes, entropy, DataProtectionScope.CurrentUser);
                 return new UTF8Encoding(false, true).GetString(plaintext);
             }
             catch (CryptographicException)
@@ -103,6 +107,7 @@ public sealed class ProtectedDataSecretStore : ISecretStore
             finally
             {
                 CryptographicOperations.ZeroMemory(protectedBytes);
+                CryptographicOperations.ZeroMemory(entropy);
                 if (plaintext is not null)
                     CryptographicOperations.ZeroMemory(plaintext);
             }
@@ -113,16 +118,13 @@ public sealed class ProtectedDataSecretStore : ISecretStore
         }
     }
 
-    public async Task<bool> DeleteAsync(
-        string key,
-        CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);
-        var path = GetPath(key);
-
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            var path = GetPath(key);
             if (!File.Exists(path))
                 return false;
 
@@ -138,9 +140,15 @@ public sealed class ProtectedDataSecretStore : ISecretStore
     private string GetPath(string key)
     {
         var keyBytes = Encoding.UTF8.GetBytes(key);
-        var hash = Convert.ToHexString(SHA256.HashData(keyBytes));
-        CryptographicOperations.ZeroMemory(keyBytes);
-        return Path.Combine(_directory, hash + ".dpapi");
+        try
+        {
+            var hash = Convert.ToHexString(SHA256.HashData(keyBytes));
+            return Path.Combine(_directory, hash + ".dpapi");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(keyBytes);
+        }
     }
 
     private static byte[] GetEntropy(string key)
