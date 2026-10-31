@@ -1,4 +1,5 @@
 using Atlas.WindowsBridge;
+using Xunit;
 
 namespace Atlas.UnitTests.Security;
 
@@ -12,7 +13,7 @@ public sealed class SafeWindowsActionsTests
     public void ValidateExternalUri_AcceptsHttpSchemes(string value)
     {
         var uri = _actions.ValidateExternalUri(value, userConfirmed: true);
-        Assert.Equal(value, uri.AbsoluteUri);
+        Assert.Equal(new Uri(value), uri);
     }
 
     [Theory]
