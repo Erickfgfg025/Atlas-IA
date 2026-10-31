@@ -91,8 +91,9 @@ O adaptador executa o Hermes em processo filho encerrável, transmite somente va
 - [x] Adaptador Hermes local isolado, com ferramentas web habilitadas e execução de comandos/arquivos/computador desabilitada
 - [ ] Memória Obsidian + índice SQLite
 - [x] Base inicial de abertura de URLs HTTP(S) com confirmação explícita e sem execução arbitrária de comandos
+- [x] Inicialização automática por usuário e opção sempre visível
 - [ ] Automação segura do Windows (demais ferramentas tipadas e auditadas)
-- [x] Pipeline de empacotamento Windows x64 não assinado (artefato de CI)
+- [x] Workflow de empacotamento Windows x64 configurado (artefato ainda não publicado)
 - [ ] Assinatura de código e atualização automática
 
 A presença de um contrato ou projeto não significa que a integração externa esteja operacional. Cada integração será marcada como concluída somente após implementação e testes verificáveis.
