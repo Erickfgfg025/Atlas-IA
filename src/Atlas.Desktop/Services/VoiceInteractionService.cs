@@ -16,7 +16,7 @@ public sealed class VoiceInteractionService : IAsyncDisposable
     private SpeechRecognizer? _recognizer;
     private readonly SpeechSynthesizer _synthesizer = new();
     private readonly MediaPlayer _player = new();
-    private IRandomAccessStream? _speechStream;
+    private SpeechSynthesisStream? _speechStream;
     private bool _isListening;
     private bool _disposed;
 
