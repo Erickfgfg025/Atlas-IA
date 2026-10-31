@@ -7,6 +7,7 @@ public sealed record AtlasSettings
     public const string DefaultOllamaEndpoint = "http://127.0.0.1:11434/";
 
     public bool EnableCloudRequests { get; init; } = false;
+    public bool EnableMemoryContext { get; init; } = false;
     public bool StartWithWindows { get; init; } = false;
     public bool KeepWindowOnTop { get; init; } = false;
     public string PreferredProvider { get; init; } = DefaultProvider;

@@ -10,7 +10,6 @@ namespace Atlas.Memory;
 public sealed class MarkdownMemoryStore : IMemoryStore
 {
     private readonly string _vaultRoot;
-    private readonly string _databasePath;
     private readonly string _connectionString;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -21,8 +20,8 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         if (string.IsNullOrWhiteSpace(options.DatabasePath)) throw new ArgumentException("Database path is required.", nameof(options));
 
         _vaultRoot = Path.GetFullPath(options.VaultPath);
-        _databasePath = Path.GetFullPath(options.DatabasePath);
-        _connectionString = new SqliteConnectionStringBuilder { DataSource = _databasePath, Mode = SqliteOpenMode.ReadWriteCreate, Cache = SqliteCacheMode.Shared }.ToString();
+        var databasePath = Path.GetFullPath(options.DatabasePath);
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadWriteCreate, Cache = SqliteCacheMode.Shared }.ToString();
         Directory.CreateDirectory(_vaultRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
         InitializeDatabaseAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -229,6 +228,27 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             CREATE INDEX IF NOT EXISTS ix_memories_category_updated ON memories(category, updated_utc DESC);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        // Migrate indexes created by earlier Atlas builds.
+        await using var columnsCommand = connection.CreateCommand();
+        columnsCommand.CommandText = "PRAGMA table_info(memories);";
+        await using var reader = await columnsCommand.ExecuteReaderAsync(cancellationToken);
+        var hasContentColumn = false;
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), "content", StringComparison.OrdinalIgnoreCase))
+            {
+                hasContentColumn = true;
+                break;
+            }
+        }
+        await reader.DisposeAsync();
+        if (!hasContentColumn)
+        {
+            await using var migration = connection.CreateCommand();
+            migration.CommandText = "ALTER TABLE memories ADD COLUMN content TEXT NOT NULL DEFAULT '';";
+            await migration.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
