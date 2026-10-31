@@ -1,0 +1,54 @@
+name: Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Atlas.sln
+
+      - name: Build and test
+        run: |
+          dotnet build Atlas.sln -c Release --no-restore
+          dotnet test Atlas.sln -c Release --no-build
+
+      - name: Publish unpackaged WinUI app
+        run: >
+          dotnet publish src/Atlas.Desktop/Atlas.Desktop.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:WindowsAppSDKSelfContained=true
+          -p:WindowsPackageType=None
+          -o artifacts/publish
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = Join-Path $env:ProgramFiles(x86) "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found." }
+          & $iscc "build/windows/atlas.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE." }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-Windows-x64-Installer
+          path: artifacts/installer/Atlas-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
