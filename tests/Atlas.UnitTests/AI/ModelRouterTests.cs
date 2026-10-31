@@ -20,6 +20,18 @@ public sealed class ModelRouterTests
     }
 
     [Fact]
+    public async Task RoutesToSelectedHermesProvider()
+    {
+        var router = new SettingsModelRouter(
+            new StubSettingsStore(new AtlasSettings { PreferredProvider = "Hermes" }),
+            new Dictionary<string, IModelProvider> { ["Hermes"] = new StubProvider("Hermes") });
+
+        var result = await router.GenerateAsync(new ModelRequest("research this"), CancellationToken.None);
+
+        Assert.Equal("Hermes", result.Provider);
+    }
+
+    [Fact]
     public async Task RoutesToSelectedLocalProvider()
     {
         var router = new SettingsModelRouter(
