@@ -140,7 +140,13 @@ public sealed partial class MainWindow : Window
         var provider = new ComboBox { MinWidth = 220 };
         provider.Items.Add("Gemini");
         provider.Items.Add("Ollama");
-        provider.SelectedIndex = _viewModel.PreferredProvider == "Ollama" ? 1 : 0;
+        provider.Items.Add("Hermes");
+        provider.SelectedIndex = _viewModel.PreferredProvider switch
+        {
+            "Ollama" => 1,
+            "Hermes" => 2,
+            _ => 0
+        };
 
         var allowCloud = new ToggleSwitch
         {
