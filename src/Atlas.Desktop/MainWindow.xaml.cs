@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly VoiceInteractionService _voice = new();
     private bool _voiceEnabled;
+    private bool _processingVoice;
 
     public MainWindow(ISettingsStore settingsStore, IModelRouter modelRouter, ISecretStore secretStore, IMemoryStore memoryStore)
     {
@@ -25,19 +26,14 @@ public sealed partial class MainWindow : Window
         Closed += MainWindow_Closed;
         _voice.Recognized += OnVoiceRecognized;
         _voice.StatusChanged += OnVoiceStatusChanged;
+        _voice.PlaybackCompleted += OnSpeechPlaybackCompleted;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         RootLayout.Loaded -= MainWindow_Loaded;
-        try
-        {
-            await _viewModel.InitializeAsync();
-        }
-        catch (Exception)
-        {
-            _viewModel.StatusMessage = "Não foi possível carregar as preferências locais.";
-        }
+        try { await _viewModel.InitializeAsync(); }
+        catch (Exception) { _viewModel.StatusMessage = "Não foi possível carregar as preferências locais."; }
     }
 
     private async void VoiceButton_Click(object sender, RoutedEventArgs e)
@@ -45,8 +41,10 @@ public sealed partial class MainWindow : Window
         if (_voiceEnabled)
         {
             _voiceEnabled = false;
+            _processingVoice = false;
             try { await _voice.StopListeningAsync(); }
-            catch (Exception) { _viewModel.StatusMessage = "Não foi possível pausar o microfone."; }
+            catch (Exception) { /* The session may already have stopped. */ }
+            _voice.InterruptSpeech();
             VoiceButton.Content = "Voz";
             _viewModel.StatusMessage = "Modo de voz pausado.";
             return;
@@ -54,24 +52,24 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            await _voice.StartListeningAsync();
             _voiceEnabled = true;
+            await _voice.StartListeningAsync();
             VoiceButton.Content = "Parar voz";
             _viewModel.StatusMessage = "Atlas está ouvindo. Fale em português.";
         }
-        catch (Exception exception) when (exception is InvalidOperationException or UnauthorizedAccessException)
+        catch (UnauthorizedAccessException)
         {
             _voiceEnabled = false;
             VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = exception is UnauthorizedAccessException
-                ? "Permita o acesso ao microfone nas configurações de privacidade do Windows."
-                : exception.Message;
+            _viewModel.StatusMessage = "Permita o acesso ao microfone nas configurações de privacidade do Windows.";
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             _voiceEnabled = false;
             VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala Português (Brasil).";
+            _viewModel.StatusMessage = exception is InvalidOperationException
+                ? exception.Message
+                : "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala pt-BR.";
         }
     }
 
@@ -79,21 +77,44 @@ public sealed partial class MainWindow : Window
     {
         DispatcherQueue.TryEnqueue(async () =>
         {
-            if (!_voiceEnabled) return;
+            if (!_voiceEnabled || _processingVoice) return;
+            _processingVoice = true;
             try
             {
                 _viewModel.StatusMessage = "Entendi. Estou pensando...";
                 await _voice.StopListeningAsync();
                 await _viewModel.SubmitVoiceTextAsync(text);
                 if (!_voiceEnabled) return;
-                await _voice.StartListeningAsync();
                 await _voice.SpeakAsync(_viewModel.AssistantResponse);
+                // Listening resumes only after playback ends, avoiding TTS feedback.
             }
             catch (Exception)
             {
-                _viewModel.StatusMessage = "Ocorreu uma falha no ciclo de voz. Toque em Voz para tentar novamente.";
+                _viewModel.StatusMessage = "O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.";
                 _voiceEnabled = false;
+                _processingVoice = false;
                 VoiceButton.Content = "Voz";
+                _voice.InterruptSpeech();
+            }
+        });
+    }
+
+    private void OnSpeechPlaybackCompleted()
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            if (!_voiceEnabled) return;
+            try
+            {
+                _processingVoice = false;
+                await _voice.StartListeningAsync();
+            }
+            catch (Exception)
+            {
+                _voiceEnabled = false;
+                _processingVoice = false;
+                VoiceButton.Content = "Voz";
+                _viewModel.StatusMessage = "Não consegui reativar o microfone. Toque em Voz para tentar novamente.";
             }
         });
     }
@@ -102,8 +123,7 @@ public sealed partial class MainWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (_voiceEnabled)
-                _viewModel.StatusMessage = status;
+            if (_voiceEnabled) _viewModel.StatusMessage = status;
         });
     }
 
@@ -111,6 +131,7 @@ public sealed partial class MainWindow : Window
     {
         _voice.Recognized -= OnVoiceRecognized;
         _voice.StatusChanged -= OnVoiceStatusChanged;
+        _voice.PlaybackCompleted -= OnSpeechPlaybackCompleted;
         await _voice.DisposeAsync();
     }
 
@@ -124,18 +145,21 @@ public sealed partial class MainWindow : Window
         var allowCloud = new ToggleSwitch
         {
             Header = "Permitir processamento na nuvem",
-            IsOn = _viewModel.EnableCloudRequests
+            IsOn = _viewModel.EnableCloudRequests,
+            IsEnabled = provider.SelectedIndex == 0
         };
+        provider.SelectionChanged += (_, _) =>
+        {
+            allowCloud.IsEnabled = provider.SelectedIndex == 0;
+            if (!allowCloud.IsEnabled) allowCloud.IsOn = false;
+        };
+
         var useMemory = new ToggleSwitch
         {
             Header = "Usar memória local como contexto",
             IsOn = _viewModel.EnableMemoryContext
         };
-        var keepOnTop = new ToggleSwitch
-        {
-            Header = "Manter janela sempre visível",
-            IsOn = _viewModel.KeepWindowOnTop
-        };
+
         var apiKey = new PasswordBox
         {
             PlaceholderText = "Nova chave Gemini (opcional)",
@@ -147,10 +171,9 @@ public sealed partial class MainWindow : Window
         content.Children.Add(provider);
         content.Children.Add(allowCloud);
         content.Children.Add(useMemory);
-        content.Children.Add(keepOnTop);
         content.Children.Add(new TextBlock
         {
-            Text = "A chave é armazenada usando a proteção do Windows.",
+            Text = "A chave é armazenada com proteção do Windows (DPAPI).",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12
         });
@@ -166,25 +189,15 @@ public sealed partial class MainWindow : Window
             XamlRoot = RootLayout.XamlRoot
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-            return;
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
         _viewModel.EnableCloudRequests = allowCloud.IsOn;
         _viewModel.EnableMemoryContext = useMemory.IsOn;
-        _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
 
         if (!string.IsNullOrWhiteSpace(apiKey.Password))
         {
-            try
-            {
-                await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password);
-            }
-            catch (ArgumentException)
-            {
-                _viewModel.StatusMessage = "A chave Gemini informada é inválida.";
-                return;
-            }
+            try { await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password); }
             catch (Exception)
             {
                 _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows.";
