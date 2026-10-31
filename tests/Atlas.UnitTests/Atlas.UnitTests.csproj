@@ -11,5 +11,6 @@
     <ProjectReference Include="../../src/Atlas.Infrastructure/Atlas.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Atlas.AI/Atlas.AI.csproj" />
     <ProjectReference Include="../../src/Atlas.Memory/Atlas.Memory.csproj" />
+    <ProjectReference Include="../../src/Atlas.WindowsBridge/Atlas.WindowsBridge.csproj" />
   </ItemGroup>
 </Project>
