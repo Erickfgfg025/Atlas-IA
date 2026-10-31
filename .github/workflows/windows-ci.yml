@@ -2,7 +2,7 @@ name: Windows CI
 
 on:
   push:
-    branches: [main, "rewrite/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -24,3 +24,5 @@ jobs:
         run: dotnet build Atlas.sln --no-restore -c Release
       - name: Test
         run: dotnet test Atlas.sln --no-build -c Release --logger "console;verbosity=normal"
+      - name: Publish Windows x64 app
+        run: dotnet publish src/Atlas.Desktop/Atlas.Desktop.csproj -c Release -r win-x64 --self-contained true -p:WindowsAppSDKSelfContained=true -p:WindowsPackageType=None -o artifacts/publish
