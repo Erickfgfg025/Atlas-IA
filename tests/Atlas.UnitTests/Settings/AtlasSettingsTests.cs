@@ -1,5 +1,6 @@
 using Atlas.Application.Settings;
 using Atlas.Infrastructure.Settings;
+using Xunit;
 
 namespace Atlas.UnitTests.Settings;
 
