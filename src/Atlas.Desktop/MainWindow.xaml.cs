@@ -6,6 +6,8 @@ using Atlas.Desktop.Services;
 using Atlas.Desktop.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Atlas.WindowsBridge;
+using WinRT.Interop;
 
 namespace Atlas.Desktop;
 
@@ -165,6 +167,16 @@ public sealed partial class MainWindow : Window
             Header = "Usar memória local como contexto",
             IsOn = _viewModel.EnableMemoryContext
         };
+        var startWithWindows = new ToggleSwitch
+        {
+            Header = "Iniciar com o Windows",
+            IsOn = _viewModel.StartWithWindows
+        };
+        var keepOnTop = new ToggleSwitch
+        {
+            Header = "Manter Atlas sempre visível",
+            IsOn = _viewModel.KeepWindowOnTop
+        };
 
         var apiKey = new PasswordBox
         {
@@ -177,6 +189,8 @@ public sealed partial class MainWindow : Window
         content.Children.Add(provider);
         content.Children.Add(allowCloud);
         content.Children.Add(useMemory);
+        content.Children.Add(startWithWindows);
+        content.Children.Add(keepOnTop);
         content.Children.Add(new TextBlock
         {
             Text = "A chave é armazenada com proteção do Windows (DPAPI).",
@@ -200,6 +214,8 @@ public sealed partial class MainWindow : Window
         _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
         _viewModel.EnableCloudRequests = allowCloud.IsOn;
         _viewModel.EnableMemoryContext = useMemory.IsOn;
+        _viewModel.StartWithWindows = startWithWindows.IsOn;
+        _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
 
         if (!string.IsNullOrWhiteSpace(apiKey.Password))
         {
@@ -211,6 +227,15 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        await _viewModel.SaveSettingsCommand.ExecuteAsync(null);
+        try
+        {
+            new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
+            WindowZOrder.SetAlwaysOnTop(WindowNative.GetWindowHandle(this), _viewModel.KeepWindowOnTop);
+            await _viewModel.SaveSettingsCommand.ExecuteAsync(null);
+        }
+        catch (Exception)
+        {
+            _viewModel.StatusMessage = "Não foi possível aplicar as preferências de inicialização ou janela."; 
+        }
     }
 }
