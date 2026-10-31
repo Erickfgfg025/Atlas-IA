@@ -145,6 +145,103 @@ public sealed partial class MainWindow : Window
         await _voice.DisposeAsync();
     }
 
+
+    private async void OpenMemory_Click(object sender, RoutedEventArgs e)
+    {
+        await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+
+        var search = new TextBox
+        {
+            PlaceholderText = "Buscar memórias...",
+            MinWidth = 320,
+            Text = _viewModel.MemorySearchQuery
+        };
+        var list = new ListView
+        {
+            ItemsSource = _viewModel.Memories,
+            DisplayMemberPath = nameof(MemoryEntry.Title),
+            SelectionMode = ListViewSelectionMode.Single,
+            Height = 150
+        };
+        var title = new TextBox { Header = "Título", MaxLength = 200 };
+        var body = new TextBox
+        {
+            Header = "Conteúdo",
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            MinHeight = 130,
+            MaxHeight = 220,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        list.SelectionChanged += (_, _) =>
+        {
+            _viewModel.SelectedMemory = list.SelectedItem as MemoryEntry;
+            title.Text = _viewModel.SelectedMemoryTitle;
+            body.Text = _viewModel.SelectedMemoryContent;
+        };
+
+        var searchButton = new Button { Content = "Buscar", MinWidth = 82 };
+        searchButton.Click += async (_, _) =>
+        {
+            _viewModel.MemorySearchQuery = search.Text;
+            await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+        };
+        var saveButton = new Button { Content = "Salvar alterações" };
+        saveButton.Click += async (_, _) =>
+        {
+            _viewModel.SelectedMemoryTitle = title.Text;
+            _viewModel.SelectedMemoryContent = body.Text;
+            await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
+            list.SelectedItem = _viewModel.SelectedMemory;
+        };
+        var deleteButton = new Button { Content = "Excluir memória" };
+        deleteButton.Click += async (_, _) =>
+        {
+            if (_viewModel.SelectedMemory is null) return;
+            var confirm = new ContentDialog
+            {
+                Title = "Excluir memória?",
+                Content = "O arquivo Markdown e sua entrada no índice local serão excluídos.",
+                PrimaryButtonText = "Excluir",
+                CloseButtonText = "Cancelar",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = RootLayout.XamlRoot
+            };
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
+            await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
+            title.Text = string.Empty;
+            body.Text = string.Empty;
+        };
+        var rebuildButton = new Button { Content = "Reconstruir índice" };
+        rebuildButton.Click += async (_, _) =>
+        {
+            await _viewModel.RebuildMemoryIndexCommand.ExecuteAsync(null);
+        };
+
+        var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        searchRow.Children.Add(search);
+        searchRow.Children.Add(searchButton);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        actions.Children.Add(saveButton);
+        actions.Children.Add(deleteButton);
+        actions.Children.Add(rebuildButton);
+        var content = new StackPanel { Spacing = 10, MinWidth = 520 };
+        content.Children.Add(searchRow);
+        content.Children.Add(list);
+        content.Children.Add(title);
+        content.Children.Add(body);
+        content.Children.Add(actions);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Memória local",
+            Content = content,
+            CloseButtonText = "Fechar",
+            XamlRoot = RootLayout.XamlRoot
+        };
+        await dialog.ShowAsync();
+    }
+
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
     {
         var provider = new ComboBox { MinWidth = 220 };
