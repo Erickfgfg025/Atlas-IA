@@ -1,3 +1,4 @@
+using Xunit;
 using Atlas.Application.Memory;
 using Atlas.Memory;
 
