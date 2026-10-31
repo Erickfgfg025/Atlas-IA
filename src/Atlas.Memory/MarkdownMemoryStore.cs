@@ -85,7 +85,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
             command.CommandText = """
                 SELECT id, category, title, relative_path, created_utc, updated_utc
                 FROM memories
-                WHERE ($query = '' OR title LIKE $pattern ESCAPE '\' OR relative_path LIKE $pattern ESCAPE '\')
+                WHERE ($query = '' OR title LIKE $pattern ESCAPE '\' OR content LIKE $pattern ESCAPE '\')
                   AND ($category IS NULL OR category = $category)
                 ORDER BY updated_utc DESC LIMIT $limit;
                 """;
