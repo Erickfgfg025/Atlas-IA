@@ -7,19 +7,19 @@ namespace Atlas.Desktop.ViewModels;
 public partial class MainViewModel(ISettingsStore settingsStore) : ObservableObject
 {
     [ObservableProperty]
-    private bool enableCloudRequests;
+    public partial bool EnableCloudRequests { get; set; }
 
     [ObservableProperty]
-    private bool startWithWindows;
+    public partial bool StartWithWindows { get; set; }
 
     [ObservableProperty]
-    private bool keepWindowOnTop;
+    public partial bool KeepWindowOnTop { get; set; }
 
     [ObservableProperty]
-    private string preferredProvider = AtlasSettings.DefaultProvider;
+    public partial string PreferredProvider { get; set; } = AtlasSettings.DefaultProvider;
 
     [ObservableProperty]
-    private string statusMessage = "Configurações locais carregadas.";
+    public partial string StatusMessage { get; set; } = "Configurações locais carregadas.";
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
