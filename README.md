@@ -12,7 +12,7 @@ Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interf
 - Arquitetura modular: Domain, Application, Infrastructure e adaptadores
 - SQLite para índice operacional; Obsidian/Markdown como memória legível pelo usuário
 - Gemini como provedor cloud principal; Ollama como alternativa local
-- Hermes Agent isolado por adaptador
+- Hermes Agent opcional por processo filho isolado (web-only; exige checkout e Python configurados)
 - Serviço de voz Windows (STT/TTS half-duplex; streaming e barge-in são etapas futuras)
 
 ## Estrutura
@@ -51,6 +51,18 @@ dotnet test Atlas.sln -c Debug
 
 Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 
+## Configuração opcional do Hermes Agent
+
+O Hermes não é iniciado automaticamente. Para habilitar o provedor, configure estas variáveis no ambiente do usuário antes de abrir o Atlas:
+
+- `ATLAS_HERMES_ENABLED=true`
+- `ATLAS_HERMES_PATH=C:\\caminho\\para\\hermes` (checkout que contém `run_agent.py`)
+- `ATLAS_HERMES_MODEL=nome-do-modelo`
+- `ATLAS_HERMES_PYTHON=python` (opcional; executável Python)
+- `ATLAS_HERMES_TIMEOUT_SECONDS=180` (opcional; entre 10 e 900)
+
+O adaptador executa o Hermes em processo filho encerrável, transmite somente variáveis de ambiente permitidas e habilita apenas o toolset `web`. Terminal, arquivos, computador, execução de código e browser são desabilitados. A integração não concede controle do Windows.
+
 ## Princípios de segurança
 
 1. Nenhuma ferramenta de controle do computador é executada diretamente a partir de texto gerado pelo modelo.
@@ -76,7 +88,7 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 - [ ] Validar captura e síntese em hardware Windows real e configurar permissões de microfone no empacotamento
 - [x] Persistência local Markdown + índice SQLite reconstruível
 - [x] Roteamento básico Gemini/Ollama com validação de respostas e erros HTTP
-- [ ] Adaptador Hermes (aguarda definir/validar interface local oficial do Hermes Agent)
+- [x] Adaptador Hermes local isolado, com ferramentas web habilitadas e execução de comandos/arquivos/computador desabilitada
 - [ ] Memória Obsidian + índice SQLite
 - [x] Base inicial de abertura de URLs HTTP(S) com confirmação explícita e sem execução arbitrária de comandos
 - [ ] Automação segura do Windows (demais ferramentas tipadas e auditadas)
