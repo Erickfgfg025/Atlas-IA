@@ -13,12 +13,13 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = "Atlas";
         _viewModel = new MainViewModel(settingsStore);
-        DataContext = _viewModel;
-        Loaded += MainWindow_Loaded;
+        RootLayout.DataContext = _viewModel;
+        RootLayout.Loaded += MainWindow_Loaded;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        RootLayout.Loaded -= MainWindow_Loaded;
         try
         {
             await _viewModel.InitializeAsync();
