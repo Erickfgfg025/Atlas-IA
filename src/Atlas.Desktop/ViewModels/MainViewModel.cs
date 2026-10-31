@@ -83,6 +83,13 @@ public partial class MainViewModel(
         StatusMessage = "Chave Gemini armazenada com proteção do Windows.";
     }
 
+    public async Task SubmitVoiceTextAsync(string recognizedText, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(recognizedText) || IsBusy) return;
+        ChatInput = recognizedText;
+        await SendMessageAsync(cancellationToken);
+    }
+
     [RelayCommand]
     private async Task SendMessageAsync(CancellationToken cancellationToken)
     {
