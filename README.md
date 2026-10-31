@@ -89,7 +89,7 @@ O adaptador executa o Hermes em processo filho encerrável, transmite somente va
 - [x] Persistência local Markdown + índice SQLite reconstruível
 - [x] Roteamento básico Gemini/Ollama com validação de respostas e erros HTTP
 - [x] Adaptador Hermes local isolado, com ferramentas web habilitadas e execução de comandos/arquivos/computador desabilitada
-- [ ] Memória Obsidian + índice SQLite
+- [x] Arquivos Markdown compatíveis com Obsidian + índice SQLite; seleção/abertura de vault pela interface ainda pendente
 - [x] Base inicial de abertura de URLs HTTP(S) com confirmação explícita e sem execução arbitrária de comandos
 - [x] Inicialização automática por usuário e opção sempre visível
 - [ ] Automação segura do Windows (demais ferramentas tipadas e auditadas)
