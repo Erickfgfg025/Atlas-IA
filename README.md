@@ -2,7 +2,7 @@
 
 Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interface WinUI 3. O Atlas foi projetado para operar localmente sempre que possível, com provedores de IA intercambiáveis e automação do Windows protegida por permissões explícitas.
 
-> **Estado desta branch:** fundação arquitetural inicial. A interface e os contratos-base estão sendo estabelecidos. Gemini, Ollama, Hermes, Obsidian, voz e automação ainda não estão integrados nesta entrega.
+> **Estado desta branch:** fundação arquitetural e primeira revisão da experiência principal. A interface concentra a conversa em uma tela e mantém preferências em um diálogo separado. O modo de voz contínuo ainda não está implementado; a próxima etapa adicionará captura, transcrição e síntese com interrupção de fala.
 
 ## Stack
 
@@ -13,7 +13,7 @@ Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interf
 - SQLite para índice operacional; Obsidian/Markdown como memória legível pelo usuário
 - Gemini como provedor cloud principal; Ollama como alternativa local
 - Hermes Agent isolado por adaptador
-- Whisper para STT e Fish Speech para TTS, sujeitos à validação de compatibilidade e desempenho
+- Pipeline de voz desacoplado da interface (STT/TTS e streaming)
 
 ## Estrutura
 
@@ -64,16 +64,18 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 ## Estado de implementação
 
 - [x] Solução modular e projetos iniciais
-- [x] Shell WinUI 3 com tema escuro e widget compacto
-- [x] Orb visual inicial com estados explícitos
-- [x] Configurações locais tipadas
+- [x] Shell WinUI 3 com tema escuro e tela principal simplificada
+- [x] Preferências recolhidas em diálogo
+- [x] Animação vetorial de ondas sonoras provisória
+- [x] Configurações locais tipadas e chave protegida pelo Windows
 - [x] Abstrações iniciais para provedores e memória
 - [x] CI Windows para build e testes
+- [ ] Integrar o GIF Sound Wave fornecido como ativo final
+- [ ] Modo de voz contínuo (captura, STT, TTS, streaming e barge-in)
 - [ ] Persistência SQLite real
-- [ ] ModelRouter Gemini/Ollama
+- [ ] ModelRouter Gemini/Ollama com validação de erros
 - [ ] Adaptador Hermes
 - [ ] Memória Obsidian + índice SQLite
-- [ ] STT/TTS local
 - [ ] Automação segura do Windows
 - [ ] Instalador assinado e atualização
 
