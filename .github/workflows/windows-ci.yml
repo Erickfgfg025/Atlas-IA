@@ -5,6 +5,10 @@ on:
     branches: [main, "rewrite/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
@@ -19,4 +23,4 @@ jobs:
       - name: Build
         run: dotnet build Atlas.sln --no-restore -c Release
       - name: Test
-        run: dotnet test Atlas.sln --no-build -c Release
+        run: dotnet test Atlas.sln --no-build -c Release --logger "console;verbosity=normal"
