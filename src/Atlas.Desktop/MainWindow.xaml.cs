@@ -194,21 +194,28 @@ public sealed partial class MainWindow : Window
             await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
             list.SelectedItem = _viewModel.SelectedMemory;
         };
+        var confirmDelete = new CheckBox
+        {
+            Content = "Confirmo excluir permanentemente a memória selecionada.",
+            IsEnabled = false
+        };
+        list.SelectionChanged += (_, _) =>
+        {
+            confirmDelete.IsChecked = false;
+            confirmDelete.IsEnabled = list.SelectedItem is MemoryEntry;
+        };
         var deleteButton = new Button { Content = "Excluir memória" };
         deleteButton.Click += async (_, _) =>
         {
             if (_viewModel.SelectedMemory is null) return;
-            var confirm = new ContentDialog
+            if (confirmDelete.IsChecked != true)
             {
-                Title = "Excluir memória?",
-                Content = "O arquivo Markdown e sua entrada no índice local serão excluídos.",
-                PrimaryButtonText = "Excluir",
-                CloseButtonText = "Cancelar",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = RootLayout.XamlRoot
-            };
-            if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
+                _viewModel.StatusMessage = "Marque a confirmação antes de excluir a memória.";
+                return;
+            }
             await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
+            confirmDelete.IsChecked = false;
+            confirmDelete.IsEnabled = false;
             title.Text = string.Empty;
             body.Text = string.Empty;
         };
@@ -230,6 +237,7 @@ public sealed partial class MainWindow : Window
         content.Children.Add(list);
         content.Children.Add(title);
         content.Children.Add(body);
+        content.Children.Add(confirmDelete);
         content.Children.Add(actions);
 
         var dialog = new ContentDialog
