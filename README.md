@@ -2,7 +2,7 @@
 
 Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interface WinUI 3. O Atlas foi projetado para operar localmente sempre que possível, com provedores de IA intercambiáveis e automação do Windows protegida por permissões explícitas.
 
-> **Estado desta branch:** fundação arquitetural e primeira revisão da experiência principal. A interface concentra a conversa em uma tela e mantém preferências em um diálogo separado. O modo de voz possui uma primeira integração nativa do Windows para reconhecimento pt-BR e síntese de fala; ainda precisa de validação em hardware real, permissões e ajustes de interrupção/eco. A animação roxa atual é vetorial provisória; o GIF original ainda precisa ser adicionado como ativo do projeto.
+> **Estado desta branch:** fundação arquitetural e primeira revisão da experiência principal. A interface concentra a conversa em uma tela e mantém preferências em um diálogo separado. O modo de voz possui reconhecimento pt-BR e síntese nativos do Windows em fluxo half-duplex: o microfone pausa durante a fala sintetizada para evitar que o Atlas transcreva a própria voz. Barge-in real e streaming ainda não estão implementados. A integração precisa de validação em hardware Windows real. A animação roxa atual é vetorial provisória; o GIF original ainda precisa ser adicionado como ativo do projeto.
 
 ## Stack
 
@@ -13,7 +13,7 @@ Assistente pessoal para Windows 10 e 11, construído em C# e .NET 10, com interf
 - SQLite para índice operacional; Obsidian/Markdown como memória legível pelo usuário
 - Gemini como provedor cloud principal; Ollama como alternativa local
 - Hermes Agent isolado por adaptador
-- Pipeline de voz desacoplado da interface (STT/TTS e streaming)
+- Serviço de voz Windows (STT/TTS half-duplex; streaming e barge-in são etapas futuras)
 
 ## Estrutura
 
@@ -57,7 +57,7 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 2. Ferramentas serão tipadas, allowlisted e validadas no backend local.
 3. Ações destrutivas, administrativas, financeiras ou que exponham dados exigem confirmação explícita.
 4. Não haverá elevação automática para administrador.
-5. Segredos ficam no Windows Credential Manager ou em armazenamento protegido, nunca no repositório nem no executável.
+5. A chave Gemini é protegida por DPAPI no perfil do usuário Windows; segredos nunca devem entrar no repositório nem no executável.
 6. Conteúdo externo, páginas web e documentos são dados não confiáveis, nunca instruções de sistema.
 7. Toda ação privilegiada terá trilha de auditoria sem registrar segredos ou conteúdo sensível desnecessário.
 
@@ -70,14 +70,14 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 - [x] Configurações locais tipadas e chave protegida pelo Windows
 - [x] Abstrações iniciais para provedores e memória
 - [x] CI Windows para build e testes
-- [ ] Integrar o GIF Sound Wave fornecido como ativo final
+- [ ] Integrar o GIF Sound Wave fornecido como ativo final (a imagem recebida ainda não está no repositório)
 - [x] Primeira integração de voz Windows (SpeechRecognizer pt-BR + SpeechSynthesizer)
 - [x] Fluxo de conversa por voz conectado ao roteador de modelos
 - [x] Interrupção da resposta falada ao detectar nova fala (barge-in inicial)
 - [ ] Validar captura e síntese em hardware Windows real e configurar permissões de microfone no empacotamento
 - [ ] Integrar o arquivo GIF Sound Wave original como ativo final (a interface usa animação vetorial provisória)
-- [ ] Persistência SQLite real
-- [ ] ModelRouter Gemini/Ollama com validação de erros
+- [x] Persistência local Markdown + índice SQLite reconstruível
+- [x] Roteamento básico Gemini/Ollama com validação de respostas e erros HTTP
 - [ ] Adaptador Hermes
 - [ ] Memória Obsidian + índice SQLite
 - [ ] Automação segura do Windows
