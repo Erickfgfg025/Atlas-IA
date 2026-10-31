@@ -121,8 +121,8 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         try
         {
             var metadata = await FindMetadataAsync(id, cancellationToken) ?? throw new KeyNotFoundException($"Memory '{id}' was not found.");
-            var oldPath = ResolveRelativePath(metadata.Value.Path);
-            var updated = new MemoryEntry(id, metadata.Value.Category, title.Trim(), content.Trim(), metadata.Value.Created, DateTimeOffset.UtcNow);
+            var oldPath = ResolveRelativePath(metadata.Path);
+            var updated = new MemoryEntry(id, metadata.Category, title.Trim(), content.Trim(), metadata.Created, DateTimeOffset.UtcNow);
             var newPath = Path.Combine(_vaultRoot, updated.Category.ToString().ToLowerInvariant(), id.ToString("N") + "-" + Guid.NewGuid().ToString("N") + ".md");
             await WriteMarkdownAsync(newPath, updated, cancellationToken);
             try
