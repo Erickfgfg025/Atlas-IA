@@ -19,6 +19,13 @@ public sealed class MemoryAwareModelRouter(
     private const int MaxMemories = 5;
     private const int MaxCharactersPerMemory = 1_200;
     private static readonly Regex TermsPattern = new(@"[\p{L}\p{N}_-]{4,}", RegexOptions.Compiled);
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "about", "after", "again", "como", "depois", "from", "have", "into",
+        "isso", "mais", "meu", "minha", "para", "pela", "pelo", "sobre",
+        "tell", "that", "the", "this", "what", "when", "where", "which",
+        "with", "your", "voce", "você"
+    };
 
     public async Task<ModelResponse> GenerateAsync(ModelRequest request, CancellationToken cancellationToken)
     {
