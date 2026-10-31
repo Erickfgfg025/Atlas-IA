@@ -6,6 +6,8 @@ namespace Atlas.Desktop.Controls;
 
 public sealed partial class OrganicOrb : UserControl
 {
+    private Storyboard? _storyboard;
+
     public OrganicOrb()
     {
         InitializeComponent();
@@ -13,31 +15,43 @@ public sealed partial class OrganicOrb : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (_storyboard is not null)
+        {
+            _storyboard.Begin();
+            return;
+        }
+
+        _storyboard = new Storyboard();
+        AddWaveAnimation(_storyboard, BackWaveScale, 0.88, 1.16, 3.8);
+        AddWaveAnimation(_storyboard, MainWaveScale, 0.94, 1.08, 2.7);
+        AddWaveAnimation(_storyboard, FrontWaveScale, 0.82, 1.22, 3.2);
+        _storyboard.Begin();
+    }
+
+    private static void AddWaveAnimation(
+        Storyboard storyboard,
+        ScaleTransform transform,
+        double from,
+        double to,
+        double seconds)
+    {
         var animation = new DoubleAnimation
         {
-            From = 0.96,
-            To = 1.04,
-            Duration = new Duration(TimeSpan.FromSeconds(2.8)),
+            From = from,
+            To = to,
+            Duration = new Duration(TimeSpan.FromSeconds(seconds)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EnableDependentAnimation = true
         };
-        Storyboard.SetTarget(animation, GlowScale);
-        Storyboard.SetTargetProperty(animation, "ScaleX");
-        var yAnimation = new DoubleAnimation
-        {
-            From = 0.96,
-            To = 1.04,
-            Duration = new Duration(TimeSpan.FromSeconds(3.2)),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EnableDependentAnimation = true
-        };
-        Storyboard.SetTarget(yAnimation, GlowScale);
-        Storyboard.SetTargetProperty(yAnimation, "ScaleY");
-        var storyboard = new Storyboard();
+
+        Storyboard.SetTarget(animation, transform);
+        Storyboard.SetTargetProperty(animation, "ScaleY");
         storyboard.Children.Add(animation);
-        storyboard.Children.Add(yAnimation);
-        storyboard.Begin();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _storyboard?.Stop();
     }
 }
