@@ -16,7 +16,7 @@ public sealed record AtlasSettings
 
     public AtlasSettings Validate()
     {
-        if (PreferredProvider is not ("Gemini" or "Ollama"))
+        if (PreferredProvider is not ("Gemini" or "Ollama" or "Hermes"))
             throw new ArgumentException("Provedor de IA inválido.", nameof(PreferredProvider));
 
         if (EnableCloudRequests && PreferredProvider != "Gemini")
