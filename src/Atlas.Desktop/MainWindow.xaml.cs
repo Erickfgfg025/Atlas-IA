@@ -34,8 +34,16 @@ public sealed partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         RootLayout.Loaded -= MainWindow_Loaded;
-        try { await _viewModel.InitializeAsync(); }
-        catch (Exception) { _viewModel.StatusMessage = "Não foi possível carregar as preferências locais."; }
+        try
+        {
+            await _viewModel.InitializeAsync();
+            new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
+            WindowZOrder.SetAlwaysOnTop(WindowNative.GetWindowHandle(this), _viewModel.KeepWindowOnTop);
+        }
+        catch (Exception)
+        {
+            _viewModel.StatusMessage = "Não foi possível carregar ou aplicar as preferências locais.";
+        }
     }
 
     private async void VoiceButton_Click(object sender, RoutedEventArgs e)
