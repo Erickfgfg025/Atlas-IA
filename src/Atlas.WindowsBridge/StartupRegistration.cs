@@ -23,6 +23,6 @@ public sealed class StartupRegistration
         if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) || !File.Exists(path))
             throw new InvalidOperationException("Não foi possível localizar o executável instalado do Atlas.");
 
-        key.SetValue(ValueName, $"\\"{path}\\"");
+        key.SetValue(ValueName, string.Concat('"', path, '"'));
     }
 }
