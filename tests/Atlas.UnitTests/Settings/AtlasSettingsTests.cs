@@ -14,6 +14,7 @@ public sealed class AtlasSettingsTests
         Assert.False(settings.EnableCloudRequests);
         Assert.False(settings.StartWithWindows);
         Assert.Equal("Gemini", settings.PreferredProvider);
+        Assert.Equal("http://127.0.0.1:11434/", settings.OllamaEndpoint);
     }
 
     [Fact]
@@ -25,6 +26,13 @@ public sealed class AtlasSettingsTests
             PreferredProvider = "Ollama"
         };
 
+        Assert.Throws<ArgumentException>(() => settings.Validate());
+    }
+
+    [Fact]
+    public void RejectsNonLoopbackOllamaEndpoint()
+    {
+        var settings = new AtlasSettings { OllamaEndpoint = "http://example.com:11434/" };
         Assert.Throws<ArgumentException>(() => settings.Validate());
     }
 

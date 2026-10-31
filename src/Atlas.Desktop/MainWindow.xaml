@@ -20,33 +20,90 @@
                     BorderBrush="#343740" BorderThickness="1" CornerRadius="12" Padding="10,6">
                 <StackPanel Orientation="Horizontal" Spacing="7">
                     <Ellipse Width="7" Height="7" Fill="#65C18C"/>
-                    <TextBlock Text="LOCAL" FontSize="10" Foreground="{StaticResource AtlasMutedBrush}"/>
+                    <TextBlock Text="LOCAL / PRIVADO" FontSize="10" Foreground="{StaticResource AtlasMutedBrush}"/>
                 </StackPanel>
             </Border>
         </Grid>
-        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-            <controls:OrganicOrb Width="190" Height="190"/>
-            <TextBlock Text="PRONTO PARA AJUDAR" HorizontalAlignment="Center" FontSize="10"
-                       CharacterSpacing="160" Foreground="{StaticResource AtlasMutedBrush}"/>
-            <TextBlock Text="O que vamos fazer?" HorizontalAlignment="Center" FontSize="24"
-                       FontWeight="SemiBold" Foreground="{StaticResource AtlasTextBrush}"/>
-            <TextBlock Text="A base do Atlas está sendo preparada. A conversa com IA será ativada após a integração segura dos provedores."
-                       HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="330" TextAlignment="Center"
-                       Foreground="{StaticResource AtlasMutedBrush}" FontSize="12"/>
-        </StackPanel>
+
+        <Grid Grid.Row="1" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                <controls:OrganicOrb Width="112" Height="112"/>
+                <StackPanel VerticalAlignment="Center" Spacing="5">
+                    <TextBlock Text="ATLAS ESTÁ PRONTO" FontSize="10" CharacterSpacing="130"
+                               Foreground="{StaticResource AtlasMutedBrush}"/>
+                    <TextBlock Text="O que vamos fazer?" FontSize="23" FontWeight="SemiBold"
+                               Foreground="{StaticResource AtlasTextBrush}"/>
+                    <TextBlock Text="Sua conversa é processada pelo provedor escolhido."
+                               FontSize="11" Foreground="{StaticResource AtlasMutedBrush}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Row="1" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
+                    BorderThickness="1" CornerRadius="14" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="RESPOSTA DO ATLAS" FontSize="9" CharacterSpacing="140"
+                               Foreground="{StaticResource AtlasMutedBrush}"/>
+                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding AssistantResponse}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource AtlasTextBrush}" FontSize="13"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="2" VerticalAlignment="Bottom" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding ChatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Escreva sua mensagem..." AcceptsReturn="True" MinHeight="48"
+                         MaxHeight="110" TextWrapping="Wrap" CornerRadius="12"/>
+                <Button Grid.Column="1" Content="Enviar" Command="{Binding SendMessageCommand}"
+                        VerticalAlignment="Bottom" MinHeight="48" CornerRadius="12"
+                        Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
+            </Grid>
+            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="10"
+                       Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
+        </Grid>
+
         <Border Grid.Row="2" Background="{StaticResource AtlasSurfaceBrush}" BorderBrush="#30333A"
                 BorderThickness="1" CornerRadius="16" Padding="14">
-            <StackPanel Spacing="12">
-                <TextBlock Text="PREFERÊNCIAS" FontSize="10" CharacterSpacing="150" Foreground="{StaticResource AtlasMutedBrush}"/>
-                <ToggleSwitch Header="Permitir solicitações à nuvem (Gemini)" IsOn="{Binding EnableCloudRequests, Mode=TwoWay}"/>
-                <ToggleSwitch Header="Iniciar com o Windows (configuração futura)" IsOn="{Binding StartWithWindows, Mode=TwoWay}"/>
-                <ToggleSwitch Header="Manter janela sempre visível" IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
+            <StackPanel Spacing="10">
+                <TextBlock Text="PROVEDOR E PRIVACIDADE" FontSize="10" CharacterSpacing="150"
+                           Foreground="{StaticResource AtlasMutedBrush}"/>
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Provedor" VerticalAlignment="Center" Foreground="{StaticResource AtlasMutedBrush}"/>
+                    <ComboBox Grid.Column="1" SelectedValue="{Binding PreferredProvider, Mode=TwoWay}"
+                              SelectedValuePath="Content" MinWidth="130">
+                        <ComboBoxItem Content="Gemini"/>
+                        <ComboBoxItem Content="Ollama"/>
+                    </ComboBox>
+                    <ToggleSwitch Grid.Column="2" Header="Permitir nuvem"
+                                  IsOn="{Binding EnableCloudRequests, Mode=TwoWay}"/>
+                </Grid>
+                <PasswordBox x:Name="GeminiApiKey" PlaceholderText="Chave da API Gemini (armazenada protegida)"
+                             PasswordRevealMode="Peek"/>
+                <Button Content="Salvar chave Gemini" Click="SaveGeminiKey_Click"
+                        HorizontalAlignment="Right" CornerRadius="10"/>
+                <ToggleSwitch Header="Manter janela sempre visível"
+                              IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
                 <Button Content="Salvar preferências" Command="{Binding SaveSettingsCommand}"
                         HorizontalAlignment="Right" CornerRadius="10"
                         Background="{StaticResource AtlasAccentBrush}" Foreground="#17100A"/>
             </StackPanel>
         </Border>
-        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" FontSize="11"
-                   Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="3" Text="O Gemini envia o conteúdo da conversa à API do Google. O Ollama processa localmente."
+                   FontSize="10" Foreground="{StaticResource AtlasMutedBrush}" TextWrapping="Wrap"/>
     </Grid>
 </Window>

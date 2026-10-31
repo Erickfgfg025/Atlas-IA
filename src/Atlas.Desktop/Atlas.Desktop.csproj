@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.250907003" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <ProjectReference Include="../Atlas.AI/Atlas.AI.csproj" />
     <ProjectReference Include="../Atlas.Application/Atlas.Application.csproj" />
     <ProjectReference Include="../Atlas.Domain/Atlas.Domain.csproj" />
     <ProjectReference Include="../Atlas.Infrastructure/Atlas.Infrastructure.csproj" />

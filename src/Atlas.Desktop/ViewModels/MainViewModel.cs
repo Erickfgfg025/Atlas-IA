@@ -1,11 +1,19 @@
+using Atlas.Application.AI;
+using Atlas.Application.Security;
 using Atlas.Application.Settings;
+using Atlas.Contracts.AI;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Atlas.Desktop.ViewModels;
 
-public partial class MainViewModel(ISettingsStore settingsStore) : ObservableObject
+public partial class MainViewModel(
+    ISettingsStore settingsStore,
+    IModelRouter modelRouter,
+    ISecretStore secretStore) : ObservableObject
 {
+    private readonly List<ModelMessage> _history = [];
+
     [ObservableProperty]
     public partial bool EnableCloudRequests { get; set; }
 
@@ -21,13 +29,72 @@ public partial class MainViewModel(ISettingsStore settingsStore) : ObservableObj
     [ObservableProperty]
     public partial string StatusMessage { get; set; } = "Configurações locais carregadas.";
 
+    [ObservableProperty]
+    public partial string ChatInput { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string AssistantResponse { get; set; } = "Escolha um provedor, configure o acesso e envie sua primeira mensagem.";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
+    public partial bool IsBusy { get; set; }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         var settings = await settingsStore.LoadAsync(cancellationToken);
         EnableCloudRequests = settings.EnableCloudRequests;
-        StartWithWindows = settings.StartWithWindows;
         KeepWindowOnTop = settings.KeepWindowOnTop;
         PreferredProvider = settings.PreferredProvider;
+        StartWithWindows = settings.StartWithWindows;
+    }
+
+    public async Task SaveGeminiApiKeyAsync(string apiKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+        await secretStore.SetAsync("gemini-api-key", apiKey.Trim());
+        StatusMessage = "Chave Gemini armazenada com proteção do Windows.";
+    }
+
+    [RelayCommand]
+    private async Task SendMessageAsync(CancellationToken cancellationToken)
+    {
+        var prompt = ChatInput.Trim();
+        if (string.IsNullOrWhiteSpace(prompt) || IsBusy)
+            return;
+
+        IsBusy = true;
+        ChatInput = string.Empty;
+        AssistantResponse = "Processando sua solicitação...";
+        try
+        {
+            var response = await modelRouter.GenerateAsync(
+                new ModelRequest(prompt, History: _history.ToArray()), cancellationToken);
+            _history.Add(new ModelMessage("user", prompt));
+            _history.Add(new ModelMessage("assistant", response.Content));
+            AssistantResponse = response.Content;
+            StatusMessage = $"Resposta recebida de {response.Provider} · {response.Model}";
+        }
+        catch (InvalidOperationException exception)
+        {
+            AssistantResponse = exception.Message;
+            StatusMessage = "A solicitação não pôde ser iniciada.";
+        }
+        catch (HttpRequestException)
+        {
+            AssistantResponse = PreferredProvider == "Ollama"
+                ? "Não consegui conectar ao Ollama local. Confirme se ele está instalado, aberto e com o modelo baixado."
+                : "Não consegui conectar ao Gemini. Verifique sua conexão, a chave e o acesso à API.";
+            StatusMessage = "Falha de comunicação com o provedor.";
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            AssistantResponse = "O provedor demorou demais para responder. Tente novamente.";
+            StatusMessage = "Tempo limite da solicitação.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -41,7 +108,7 @@ public partial class MainViewModel(ISettingsStore settingsStore) : ObservableObj
                 StartWithWindows = StartWithWindows,
                 KeepWindowOnTop = KeepWindowOnTop,
                 PreferredProvider = PreferredProvider
-            };
+            }.Validate();
 
             await settingsStore.SaveAsync(settings, cancellationToken);
             StatusMessage = "Preferências salvas neste computador.";
