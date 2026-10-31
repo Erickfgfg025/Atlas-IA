@@ -13,5 +13,6 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <ProjectReference Include="../Atlas.Application/Atlas.Application.csproj" />
     <ProjectReference Include="../Atlas.Domain/Atlas.Domain.csproj" />
+    <ProjectReference Include="../Atlas.Infrastructure/Atlas.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

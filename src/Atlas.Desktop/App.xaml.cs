@@ -1,3 +1,4 @@
+using Atlas.Infrastructure.Settings;
 using Microsoft.UI.Xaml;
 
 namespace Atlas.Desktop;
@@ -13,7 +14,8 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
+        var settingsStore = new JsonSettingsStore();
+        _window = new MainWindow(settingsStore);
         _window.Activate();
     }
 }
