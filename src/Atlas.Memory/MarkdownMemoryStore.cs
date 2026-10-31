@@ -23,7 +23,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         var databasePath = Path.GetFullPath(options.DatabasePath);
         _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadWriteCreate, Cache = SqliteCacheMode.Shared }.ToString();
         Directory.CreateDirectory(_vaultRoot);
-        Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
         InitializeDatabaseAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 

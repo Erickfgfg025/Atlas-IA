@@ -50,12 +50,12 @@
                     <TextBlock Text="RESPOSTA DO ATLAS" FontSize="9" CharacterSpacing="140"
                                Foreground="{StaticResource AtlasMutedBrush}"/>
                     <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding AssistantResponse}" TextWrapping="Wrap"
+                            <TextBlock Text="{Binding AssistantResponse}" TextWrapping="Wrap"
                                    Foreground="{StaticResource AtlasTextBrush}" FontSize="13"/>
+                    </ScrollViewer>
                     <Button Content="Salvar última conversa na memória local"
                             Command="{Binding SaveLastExchangeCommand}"
                             HorizontalAlignment="Right" CornerRadius="9"/>
-                    </ScrollViewer>
                 </StackPanel>
             </Border>
 
