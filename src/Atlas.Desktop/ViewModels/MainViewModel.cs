@@ -85,7 +85,8 @@ public partial class MainViewModel(
 
     public async Task SubmitVoiceTextAsync(string recognizedText, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(recognizedText) || IsBusy) return;
+        if (string.IsNullOrWhiteSpace(recognizedText)) return;
+        if (IsBusy) throw new InvalidOperationException("Aguarde a resposta atual antes de enviar outra mensagem.");
         ChatInput = recognizedText;
         await SendMessageAsync(cancellationToken);
     }
