@@ -52,6 +52,9 @@
                     <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
                         <TextBlock Text="{Binding AssistantResponse}" TextWrapping="Wrap"
                                    Foreground="{StaticResource AtlasTextBrush}" FontSize="13"/>
+                    <Button Content="Salvar última conversa na memória local"
+                            Command="{Binding SaveLastExchangeCommand}"
+                            HorizontalAlignment="Right" CornerRadius="9"/>
                     </ScrollViewer>
                 </StackPanel>
             </Border>
@@ -96,6 +99,8 @@
                              PasswordRevealMode="Peek"/>
                 <Button Content="Salvar chave Gemini" Click="SaveGeminiKey_Click"
                         HorizontalAlignment="Right" CornerRadius="10"/>
+                <ToggleSwitch Header="Usar memórias locais como contexto (opcional)"
+                              IsOn="{Binding EnableMemoryContext, Mode=TwoWay}"/>
                 <ToggleSwitch Header="Manter janela sempre visível"
                               IsOn="{Binding KeepWindowOnTop, Mode=TwoWay}"/>
                 <Button Content="Salvar preferências" Command="{Binding SaveSettingsCommand}"

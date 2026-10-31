@@ -1,5 +1,7 @@
 using Atlas.Application.AI;
 using Atlas.Application.Security;
+using Atlas.Application.Memory;
+using System.Data.Common;
 using Atlas.Application.Settings;
 using Atlas.Contracts.AI;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,12 +12,16 @@ namespace Atlas.Desktop.ViewModels;
 public partial class MainViewModel(
     ISettingsStore settingsStore,
     IModelRouter modelRouter,
-    ISecretStore secretStore) : ObservableObject
+    ISecretStore secretStore,
+    IMemoryStore memoryStore) : ObservableObject
 {
     private readonly List<ModelMessage> _history = [];
 
     [ObservableProperty]
     public partial bool EnableCloudRequests { get; set; }
+
+    [ObservableProperty]
+    public partial bool EnableMemoryContext { get; set; }
 
     [ObservableProperty]
     public partial bool StartWithWindows { get; set; }
@@ -43,6 +49,7 @@ public partial class MainViewModel(
     {
         var settings = await settingsStore.LoadAsync(cancellationToken);
         EnableCloudRequests = settings.EnableCloudRequests;
+        EnableMemoryContext = settings.EnableMemoryContext;
         KeepWindowOnTop = settings.KeepWindowOnTop;
         PreferredProvider = settings.PreferredProvider;
         StartWithWindows = settings.StartWithWindows;
@@ -98,6 +105,29 @@ public partial class MainViewModel(
     }
 
     [RelayCommand]
+    private async Task SaveLastExchangeAsync(CancellationToken cancellationToken)
+    {
+        if (_history.Count < 2 || _history[^2].Role != "user" || _history[^1].Role != "assistant")
+        {
+            StatusMessage = "Envie uma mensagem antes de salvar uma memória.";
+            return;
+        }
+
+        var title = $"Conversa · {DateTime.Now:yyyy-MM-dd HH:mm}";
+        var content = $"Usuário: {_history[^2].Content}\n\nAtlas: {_history[^1].Content}";
+        if (content.Length > 100_000) content = content[..100_000];
+        try
+        {
+            await memoryStore.CreateAsync(MemoryCategory.Episodes, title, content, cancellationToken);
+            StatusMessage = "Conversa salva na memória local.";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or ArgumentException or DbException)
+        {
+            StatusMessage = "Não foi possível salvar a memória local.";
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveSettingsAsync(CancellationToken cancellationToken)
     {
         try
@@ -105,6 +135,7 @@ public partial class MainViewModel(
             var settings = new AtlasSettings
             {
                 EnableCloudRequests = EnableCloudRequests,
+                EnableMemoryContext = EnableMemoryContext,
                 StartWithWindows = StartWithWindows,
                 KeepWindowOnTop = KeepWindowOnTop,
                 PreferredProvider = PreferredProvider

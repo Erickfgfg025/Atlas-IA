@@ -20,10 +20,12 @@ public sealed class MarkdownMemoryStoreTests : IDisposable
         var created = await _store.CreateAsync(MemoryCategory.Projects, "Atlas roadmap", "Implement local memory.");
         var loaded = await _store.GetAsync(created.Id);
         var results = await _store.SearchAsync("roadmap", MemoryCategory.Projects);
+        var bodyResults = await _store.SearchAsync("local memory", MemoryCategory.Projects);
 
         Assert.NotNull(loaded);
         Assert.Equal("Implement local memory.", loaded.Content);
         Assert.Single(results);
+        Assert.Single(bodyResults);
         Assert.True(Directory.GetFiles(Path.Combine(_root, "vault"), "*.md", SearchOption.AllDirectories).Length == 1);
     }
 

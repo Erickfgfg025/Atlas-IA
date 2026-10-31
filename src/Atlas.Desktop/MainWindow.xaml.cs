@@ -1,6 +1,7 @@
 using Atlas.Application.AI;
 using Atlas.Application.Security;
 using Atlas.Application.Settings;
+using Atlas.Application.Memory;
 using Atlas.Desktop.ViewModels;
 using Microsoft.UI.Xaml;
 
@@ -10,11 +11,11 @@ public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
 
-    public MainWindow(ISettingsStore settingsStore, IModelRouter modelRouter, ISecretStore secretStore)
+    public MainWindow(ISettingsStore settingsStore, IModelRouter modelRouter, ISecretStore secretStore, IMemoryStore memoryStore)
     {
         InitializeComponent();
         Title = "Atlas";
-        _viewModel = new MainViewModel(settingsStore, modelRouter, secretStore);
+        _viewModel = new MainViewModel(settingsStore, modelRouter, secretStore, memoryStore);
         RootLayout.DataContext = _viewModel;
         RootLayout.Loaded += MainWindow_Loaded;
     }

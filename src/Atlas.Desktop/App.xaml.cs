@@ -1,5 +1,7 @@
 using Atlas.AI;
 using Atlas.Application.AI;
+using Atlas.Application.Memory;
+using Atlas.Memory;
 using Atlas.Application.Security;
 using Atlas.Application.Settings;
 using Atlas.Infrastructure.Security;
@@ -28,9 +30,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             ["Ollama"] = new OllamaModelProvider(
                 _httpClient, new Uri(AtlasSettings.DefaultOllamaEndpoint), AtlasSettings.DefaultOllamaModel)
         };
-        IModelRouter modelRouter = new SettingsModelRouter(settingsStore, providers);
+        var memoryStore = new MarkdownMemoryStore(MemoryVaultOptions.CreateDefault());
+        IModelRouter providerRouter = new SettingsModelRouter(settingsStore, providers);
+        IModelRouter modelRouter = new MemoryAwareModelRouter(settingsStore, memoryStore, providerRouter);
 
-        _window = new MainWindow(settingsStore, modelRouter, secretStore);
+        _window = new MainWindow(settingsStore, modelRouter, secretStore, memoryStore);
         _window.Activate();
     }
 }
