@@ -199,7 +199,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 insert.Transaction = (SqliteTransaction)transaction;
                 insert.CommandText = """
                     INSERT OR REPLACE INTO memories (id, category, title, content, relative_path, created_utc, updated_utc)
-                    VALUES ($id, $category, $title, $path, $created, $updated);
+                    VALUES ($id, $category, $title, $content, $path, $created, $updated);
                     """;
                 AddParameters(insert, item.Entry, item.Path);
                 await insert.ExecuteNonQueryAsync(cancellationToken);
