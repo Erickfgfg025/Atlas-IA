@@ -27,7 +27,6 @@ public sealed partial class MainWindow : Window
         try
         {
             await _viewModel.InitializeAsync();
-            await _viewModel.RefreshMemoriesCommand.ExecuteAsync();
         }
         catch (Exception)
         {
@@ -35,38 +34,83 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void DeleteMemory_Click(object sender, RoutedEventArgs e)
+    private async void OpenSettings_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel.SelectedMemory is null) return;
+        var provider = new ComboBox { MinWidth = 220, SelectedIndex = _viewModel.PreferredProvider == "Ollama" ? 1 : 0 };
+        provider.Items.Add("Gemini");
+        provider.Items.Add("Ollama");
+
+        var allowCloud = new ToggleSwitch
+        {
+            Header = "Permitir processamento na nuvem",
+            IsOn = _viewModel.EnableCloudRequests
+        };
+        var useMemory = new ToggleSwitch
+        {
+            Header = "Usar memória local como contexto",
+            IsOn = _viewModel.EnableMemoryContext
+        };
+        var keepOnTop = new ToggleSwitch
+        {
+            Header = "Manter janela sempre visível",
+            IsOn = _viewModel.KeepWindowOnTop
+        };
+        var apiKey = new PasswordBox
+        {
+            PlaceholderText = "Nova chave Gemini (opcional)",
+            PasswordRevealMode = PasswordRevealMode.Peek
+        };
+
+        var content = new StackPanel { Spacing = 14 };
+        content.Children.Add(new TextBlock { Text = "Provedor de IA" });
+        content.Children.Add(provider);
+        content.Children.Add(allowCloud);
+        content.Children.Add(useMemory);
+        content.Children.Add(keepOnTop);
+        content.Children.Add(new TextBlock
+        {
+            Text = "A chave é armazenada usando a proteção do Windows.",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12
+        });
+        content.Children.Add(apiKey);
 
         var dialog = new ContentDialog
         {
-            Title = "Excluir memória?",
-            Content = $"A memória \"{_viewModel.SelectedMemory.Title}\" será removida do Atlas e do arquivo Markdown local. Esta ação não pode ser desfeita.",
-            PrimaryButtonText = "Excluir",
+            Title = "Configurações",
+            Content = content,
+            PrimaryButtonText = "Salvar",
             CloseButtonText = "Cancelar",
-            DefaultButton = ContentDialogButton.Close,
+            DefaultButton = ContentDialogButton.Primary,
             XamlRoot = RootLayout.XamlRoot
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-            await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync();
-    }
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            return;
 
-    private async void SaveGeminiKey_Click(object sender, RoutedEventArgs e)
-    {
-        try
+        _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
+        _viewModel.EnableCloudRequests = allowCloud.IsOn;
+        _viewModel.EnableMemoryContext = useMemory.IsOn;
+        _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
+
+        if (!string.IsNullOrWhiteSpace(apiKey.Password))
         {
-            await _viewModel.SaveGeminiApiKeyAsync(GeminiApiKey.Password);
-            GeminiApiKey.Password = string.Empty;
+            try
+            {
+                await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password);
+            }
+            catch (ArgumentException)
+            {
+                _viewModel.StatusMessage = "A chave Gemini informada é inválida.";
+                return;
+            }
+            catch (Exception)
+            {
+                _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows.";
+                return;
+            }
         }
-        catch (ArgumentException)
-        {
-            _viewModel.StatusMessage = "Informe uma chave Gemini válida.";
-        }
-        catch (Exception)
-        {
-            _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows.";
-        }
+
+        await _viewModel.SaveSettingsCommand.ExecuteAsync();
     }
 }
