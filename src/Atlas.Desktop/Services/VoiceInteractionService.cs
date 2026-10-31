@@ -1,16 +1,15 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Windows.Globalization;
-using Windows.Media;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Media.SpeechRecognition;
 using Windows.Media.SpeechSynthesis;
-using Windows.Storage.Streams;
 
 namespace Atlas.Desktop.Services;
 
+/// <summary>
+/// Windows-native, half-duplex speech loop. Recognition is paused during TTS
+/// to prevent the assistant from transcribing its own speaker output.
+/// </summary>
 public sealed class VoiceInteractionService : IAsyncDisposable
 {
     private SpeechRecognizer? _recognizer;
@@ -22,6 +21,7 @@ public sealed class VoiceInteractionService : IAsyncDisposable
 
     public event Action<string>? Recognized;
     public event Action<string>? StatusChanged;
+    public event Action? PlaybackCompleted;
 
     public async Task StartListeningAsync(CancellationToken cancellationToken = default)
     {
@@ -32,10 +32,8 @@ public sealed class VoiceInteractionService : IAsyncDisposable
         if (_recognizer is null)
         {
             _recognizer = new SpeechRecognizer(new Language("pt-BR"));
-            _recognizer.Constraints.Add(
-                new SpeechRecognitionTopicConstraint(
-                    SpeechRecognitionScenario.Dictation,
-                    "atlas_assistant"));
+            _recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(
+                SpeechRecognitionScenario.Dictation, "atlas_assistant"));
             _recognizer.ContinuousRecognitionSession.ResultGenerated += OnResultGenerated;
             _recognizer.ContinuousRecognitionSession.Completed += OnRecognitionCompleted;
 
@@ -43,19 +41,35 @@ public sealed class VoiceInteractionService : IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (compilation.Status != SpeechRecognitionResultStatus.Success)
                 throw new InvalidOperationException(
-                    "O reconhecimento de voz em português não está disponível neste Windows. Instale o pacote de fala Português (Brasil).");
+                    "O reconhecimento pt-BR não está disponível. Instale o pacote de fala Português (Brasil) no Windows.");
         }
 
-        await _recognizer.ContinuousRecognitionSession.StartAsync();
-        _isListening = true;
-        StatusChanged?.Invoke("Ouvindo");
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            await _recognizer.ContinuousRecognitionSession.StartAsync();
+            _isListening = true;
+            StatusChanged?.Invoke("Ouvindo");
+        }
+        catch
+        {
+            _isListening = false;
+            throw;
+        }
     }
 
     public async Task StopListeningAsync()
     {
         if (!_isListening || _recognizer is null) return;
         _isListening = false;
-        await _recognizer.ContinuousRecognitionSession.StopAsync();
+        try
+        {
+            await _recognizer.ContinuousRecognitionSession.StopAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // The Windows recognition session may have completed between event and stop.
+        }
         StatusChanged?.Invoke("Microfone pausado");
     }
 
@@ -66,11 +80,20 @@ public sealed class VoiceInteractionService : IAsyncDisposable
 
         StopSpeech();
         StatusChanged?.Invoke("Falando");
-        _speechStream = await _synthesizer.SynthesizeTextToStreamAsync(text);
-        cancellationToken.ThrowIfCancellationRequested();
-        _player.Source = MediaSource.CreateFromStream(_speechStream, _speechStream.ContentType);
-        _player.MediaEnded += OnMediaEnded;
-        _player.Play();
+        try
+        {
+            _speechStream = await _synthesizer.SynthesizeTextToStreamAsync(text);
+            cancellationToken.ThrowIfCancellationRequested();
+            _player.Source = MediaSource.CreateFromStream(_speechStream, _speechStream.ContentType);
+            _player.MediaEnded += OnMediaEnded;
+            _player.MediaFailed += OnMediaFailed;
+            _player.Play();
+        }
+        catch
+        {
+            StopSpeech();
+            throw;
+        }
     }
 
     public void InterruptSpeech()
@@ -87,30 +110,43 @@ public sealed class VoiceInteractionService : IAsyncDisposable
             string.IsNullOrWhiteSpace(args.Result.Text))
             return;
 
-        StopSpeech();
+        _ = StopListeningFromRecognitionAsync();
         Recognized?.Invoke(args.Result.Text.Trim());
+    }
+
+    private async Task StopListeningFromRecognitionAsync()
+    {
+        try { await StopListeningAsync(); }
+        catch (Exception) { StatusChanged?.Invoke("Não foi possível pausar o microfone"); }
     }
 
     private void OnRecognitionCompleted(
         SpeechContinuousRecognitionSession sender,
         SpeechContinuousRecognitionCompletedEventArgs args)
     {
-        if (!_isListening) return;
         _isListening = false;
-        StatusChanged?.Invoke(args.Status == SpeechRecognitionResultStatus.Success
-            ? "Microfone pausado"
-            : "Reconhecimento interrompido");
+        if (args.Status != SpeechRecognitionResultStatus.Success)
+            StatusChanged?.Invoke("Reconhecimento interrompido");
     }
 
     private void OnMediaEnded(MediaPlayer sender, object args)
     {
         StopSpeech();
-        StatusChanged?.Invoke(_isListening ? "Ouvindo" : "Pronto");
+        StatusChanged?.Invoke("Resposta concluída");
+        PlaybackCompleted?.Invoke();
+    }
+
+    private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+    {
+        StopSpeech();
+        StatusChanged?.Invoke("Falha na reprodução de áudio");
+        PlaybackCompleted?.Invoke();
     }
 
     private void StopSpeech()
     {
         _player.MediaEnded -= OnMediaEnded;
+        _player.MediaFailed -= OnMediaFailed;
         _player.Pause();
         _player.Source = null;
         _speechStream?.Dispose();
@@ -133,7 +169,6 @@ public sealed class VoiceInteractionService : IAsyncDisposable
             _recognizer.Dispose();
         }
 
-        _player.MediaEnded -= OnMediaEnded;
         StopSpeech();
         _player.Dispose();
         _synthesizer.Dispose();
