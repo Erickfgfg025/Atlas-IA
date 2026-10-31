@@ -2,6 +2,7 @@ using Atlas.Application.AI;
 using Atlas.Application.Security;
 using Atlas.Application.Settings;
 using Atlas.Application.Memory;
+using Atlas.Desktop.Services;
 using Atlas.Desktop.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -11,6 +12,8 @@ namespace Atlas.Desktop;
 public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private readonly VoiceInteractionService _voice = new();
+    private bool _voiceEnabled;
 
     public MainWindow(ISettingsStore settingsStore, IModelRouter modelRouter, ISecretStore secretStore, IMemoryStore memoryStore)
     {
@@ -19,6 +22,9 @@ public sealed partial class MainWindow : Window
         _viewModel = new MainViewModel(settingsStore, modelRouter, secretStore, memoryStore);
         RootLayout.DataContext = _viewModel;
         RootLayout.Loaded += MainWindow_Loaded;
+        Closed += MainWindow_Closed;
+        _voice.Recognized += OnVoiceRecognized;
+        _voice.StatusChanged += OnVoiceStatusChanged;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -32,6 +38,81 @@ public sealed partial class MainWindow : Window
         {
             _viewModel.StatusMessage = "Não foi possível carregar as preferências locais.";
         }
+    }
+
+    private async void VoiceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_voiceEnabled)
+        {
+            _voiceEnabled = false;
+            try { await _voice.StopListeningAsync(); }
+            catch (Exception) { _viewModel.StatusMessage = "Não foi possível pausar o microfone."; }
+            VoiceButton.Content = "Voz";
+            _viewModel.StatusMessage = "Modo de voz pausado.";
+            return;
+        }
+
+        try
+        {
+            await _voice.StartListeningAsync();
+            _voiceEnabled = true;
+            VoiceButton.Content = "Parar voz";
+            _viewModel.StatusMessage = "Atlas está ouvindo. Fale em português.";
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or UnauthorizedAccessException)
+        {
+            _voiceEnabled = false;
+            VoiceButton.Content = "Voz";
+            _viewModel.StatusMessage = exception is UnauthorizedAccessException
+                ? "Permita o acesso ao microfone nas configurações de privacidade do Windows."
+                : exception.Message;
+        }
+        catch (Exception)
+        {
+            _voiceEnabled = false;
+            VoiceButton.Content = "Voz";
+            _viewModel.StatusMessage = "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala Português (Brasil).";
+        }
+    }
+
+    private void OnVoiceRecognized(string text)
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            if (!_voiceEnabled) return;
+            try
+            {
+                _viewModel.StatusMessage = "Entendi. Estou pensando...";
+                await _voice.StopListeningAsync();
+                await _viewModel.SubmitVoiceTextAsync(text);
+                if (!_voiceEnabled) return;
+                await _voice.SpeakAsync(_viewModel.AssistantResponse);
+                if (_voiceEnabled)
+                    await _voice.StartListeningAsync();
+            }
+            catch (Exception)
+            {
+                _viewModel.StatusMessage = "Ocorreu uma falha no ciclo de voz. Toque em Voz para tentar novamente.";
+                _voiceEnabled = false;
+                VoiceButton.Content = "Voz";
+            }
+        });
+    }
+
+    private void OnVoiceStatusChanged(string status)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_voiceEnabled)
+                _viewModel.StatusMessage = status;
+        });
+    }
+
+    private async void MainWindow_Closed(object sender, WindowEventArgs args)
+    {
+        _voice.Recognized -= OnVoiceRecognized;
+        _voice.StatusChanged -= OnVoiceStatusChanged;
+        await _voice.DisposeAsync();
     }
 
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
@@ -112,6 +193,6 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        await _viewModel.SaveSettingsCommand.ExecuteAsync();
+        await _viewModel.SaveSettingsCommand.ExecuteAsync(null);
     }
 }
