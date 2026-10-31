@@ -16,5 +16,6 @@
     <ProjectReference Include="../Atlas.Domain/Atlas.Domain.csproj" />
     <ProjectReference Include="../Atlas.Infrastructure/Atlas.Infrastructure.csproj" />
     <ProjectReference Include="../Atlas.Memory/Atlas.Memory.csproj" />
+    <ProjectReference Include="../Atlas.WindowsBridge/Atlas.WindowsBridge.csproj" />
   </ItemGroup>
 </Project>
