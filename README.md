@@ -73,14 +73,14 @@ Abra `Atlas.sln` no Visual Studio para executar o projeto `Atlas.Desktop`.
 - [ ] Integrar o GIF Sound Wave fornecido como ativo final (a imagem recebida ainda não está no repositório)
 - [x] Primeira integração de voz Windows (SpeechRecognizer pt-BR + SpeechSynthesizer)
 - [x] Fluxo de conversa por voz conectado ao roteador de modelos
-- [x] Interrupção da resposta falada ao detectar nova fala (barge-in inicial)
 - [ ] Validar captura e síntese em hardware Windows real e configurar permissões de microfone no empacotamento
-- [ ] Integrar o arquivo GIF Sound Wave original como ativo final (a interface usa animação vetorial provisória)
 - [x] Persistência local Markdown + índice SQLite reconstruível
 - [x] Roteamento básico Gemini/Ollama com validação de respostas e erros HTTP
-- [ ] Adaptador Hermes
+- [ ] Adaptador Hermes (aguarda definir/validar interface local oficial do Hermes Agent)
 - [ ] Memória Obsidian + índice SQLite
-- [ ] Automação segura do Windows
-- [ ] Instalador assinado e atualização
+- [x] Base inicial de abertura de URLs HTTP(S) com confirmação explícita e sem execução arbitrária de comandos
+- [ ] Automação segura do Windows (demais ferramentas tipadas e auditadas)
+- [x] Pipeline de empacotamento Windows x64 não assinado (artefato de CI)
+- [ ] Assinatura de código e atualização automática
 
 A presença de um contrato ou projeto não significa que a integração externa esteja operacional. Cada integração será marcada como concluída somente após implementação e testes verificáveis.
