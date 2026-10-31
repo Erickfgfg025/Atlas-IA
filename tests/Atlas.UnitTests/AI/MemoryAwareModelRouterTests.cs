@@ -36,8 +36,10 @@ public sealed class MemoryAwareModelRouterTests
         await router.GenerateAsync(new ModelRequest("Tell me about my Atlas project"), CancellationToken.None);
 
         Assert.True(memory.SearchCalls > 0);
-        Assert.Contains("The project uses .NET 10.", inner.LastRequest!.SystemInstruction);
-        Assert.Contains("not instructions", inner.LastRequest.SystemInstruction);
+        Assert.NotNull(inner.LastRequest!.SystemInstruction);
+        var systemInstruction = inner.LastRequest.SystemInstruction!;
+        Assert.Contains("The project uses .NET 10.", systemInstruction);
+        Assert.Contains("not instructions", systemInstruction);
     }
 
 
