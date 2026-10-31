@@ -275,11 +275,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     private static async Task<string> ReadBodyAsync(string path, CancellationToken cancellationToken)
     {
         var text = await File.ReadAllTextAsync(path, cancellationToken);
-        var marker = "\n---\n";
-        var end = text.IndexOf(marker, StringComparison.Ordinal);
+        var end = text.IndexOf("\n---\n", StringComparison.Ordinal);
         if (!text.StartsWith("---\n", StringComparison.Ordinal) || end < 0) return text;
-        var bodyStart = text.IndexOf("\n\n", end + marker.Length, StringComparison.Ordinal);
-        return bodyStart < 0 ? string.Empty : text[(bodyStart + 2)..].Trim();
+        return ExtractBody(text, end + 5);
     }
 
     private static async Task<MemoryEntry?> ReadMarkdownAsync(string path, CancellationToken cancellationToken)
@@ -298,11 +296,22 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 Value("created_utc") is not { } created ||
                 Value("updated_utc") is not { } updated) return null;
             var title = Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
-            var bodyStart = text.IndexOf("\n\n", end + 5, StringComparison.Ordinal);
-            var body = bodyStart < 0 ? string.Empty : text[(bodyStart + 2)..].Trim();
+            var body = ExtractBody(text, end + 5);
             return new MemoryEntry(id, category, title, body, DateTimeOffset.Parse(created), DateTimeOffset.Parse(updated));
         }
         catch (Exception ex) when (ex is IOException or FormatException or ArgumentException) { return null; }
+    }
+
+    private static string ExtractBody(string text, int bodyStart)
+    {
+        while (bodyStart < text.Length && text[bodyStart] == '\n') bodyStart++;
+        var headingEnd = text.IndexOf('\n', bodyStart);
+        if (headingEnd >= 0 && text[bodyStart..headingEnd].StartsWith("# ", StringComparison.Ordinal))
+        {
+            bodyStart = headingEnd + 1;
+            if (bodyStart < text.Length && text[bodyStart] == '\n') bodyStart++;
+        }
+        return text[bodyStart..].Trim();
     }
 
     private static void AddParameters(SqliteCommand command, MemoryEntry entry, string relativePath)
