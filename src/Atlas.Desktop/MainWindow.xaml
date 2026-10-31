@@ -23,6 +23,8 @@
                 <Ellipse Width="7" Height="7" Fill="#65C18C"/>
                 <TextBlock Text="PRONTO" FontSize="10"
                            Foreground="{StaticResource AtlasMutedBrush}"/>
+                <Button x:Name="MemoryButton" Content="Memória" Click="OpenMemory_Click"
+                        CornerRadius="10" Background="#202329" BorderBrush="#343740" BorderThickness="1"/>
                 <Button x:Name="SettingsButton" Content="Configurações"
                         Click="OpenSettings_Click" CornerRadius="10"
                         Background="#202329" BorderBrush="#343740" BorderThickness="1"/>
