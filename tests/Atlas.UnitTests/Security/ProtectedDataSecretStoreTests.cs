@@ -1,16 +1,15 @@
+using System.Runtime.Versioning;
 using Atlas.Infrastructure.Security;
 using Xunit;
 
 namespace Atlas.UnitTests.Security;
 
+[SupportedOSPlatform("windows")]
 public sealed class ProtectedDataSecretStoreTests
 {
     [Fact]
     public async Task SecretCanBeStoredAndReadByTheSameWindowsUser()
     {
-        if (!OperatingSystem.IsWindows())
-            return;
-
         var directory = Path.Combine(Path.GetTempPath(), "AtlasSecretTests", Guid.NewGuid().ToString("N"));
         try
         {
@@ -29,9 +28,6 @@ public sealed class ProtectedDataSecretStoreTests
     [Fact]
     public async Task SecretKeysAreIsolatedAndDeleteIsIdempotent()
     {
-        if (!OperatingSystem.IsWindows())
-            return;
-
         var directory = Path.Combine(Path.GetTempPath(), "AtlasSecretTests", Guid.NewGuid().ToString("N"));
         try
         {
@@ -53,9 +49,6 @@ public sealed class ProtectedDataSecretStoreTests
     [Fact]
     public async Task RejectsEmptyKeyAndSecret()
     {
-        if (!OperatingSystem.IsWindows())
-            return;
-
         var store = new ProtectedDataSecretStore(Path.GetTempPath());
         await Assert.ThrowsAsync<ArgumentException>(() => store.SetAsync("", "secret"));
         await Assert.ThrowsAsync<ArgumentException>(() => store.SetAsync("api-key", " "));
