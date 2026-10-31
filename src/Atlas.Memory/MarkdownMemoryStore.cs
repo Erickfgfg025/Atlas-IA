@@ -90,7 +90,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 """;
             command.Parameters.AddWithValue("$query", query?.Trim() ?? string.Empty);
             command.Parameters.AddWithValue("$pattern", "%" + EscapeLike(query?.Trim() ?? string.Empty) + "%");
-            command.Parameters.AddWithValue("$category", category?.ToString());
+            command.Parameters.AddWithValue("$category", category is null ? DBNull.Value : category.Value.ToString());
             command.Parameters.AddWithValue("$limit", limit);
 
             var results = new List<MemoryEntry>();
