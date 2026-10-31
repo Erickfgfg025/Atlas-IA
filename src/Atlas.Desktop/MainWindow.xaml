@@ -4,10 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Atlas.Desktop.Controls"
     Title="Atlas">
-    <Grid x:Name="RootLayout"
-          Background="{StaticResource AtlasBackgroundBrush}"
-          Padding="28,22"
-          RowSpacing="18">
+    <Border x:Name="RootLayout" Background="{StaticResource AtlasBackgroundBrush}" Padding="28,22">
+    <Grid RowSpacing="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -39,7 +37,7 @@
             </Grid.RowDefinitions>
 
             <StackPanel HorizontalAlignment="Center" Spacing="2">
-                <controls:OrganicOrb Width="min(520, 72vw)" Height="150"/>
+                <controls:OrganicOrb Width="520" Height="150"/>
                 <TextBlock Text="Estou aqui. O que vamos fazer?"
                            FontSize="24" FontWeight="SemiBold"
                            HorizontalAlignment="Center"
@@ -104,5 +102,6 @@
                    Text="Privacidade em primeiro lugar · suas memórias permanecem neste computador."
                    FontSize="10" HorizontalAlignment="Center"
                    Foreground="{StaticResource AtlasMutedBrush}"/>
-    </Grid>
+        </Grid>
+</Border>
 </Window>
