@@ -70,17 +70,13 @@ public sealed partial class MainWindow : Window
         }
         catch (UnauthorizedAccessException)
         {
-            _voiceEnabled = false;
-            VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = "Permita o acesso ao microfone nas configurações de privacidade do Windows.";
+            DisableVoice("Permita o acesso ao microfone nas configurações de privacidade do Windows.");
         }
         catch (Exception exception)
         {
-            _voiceEnabled = false;
-            VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = exception is InvalidOperationException
+            DisableVoice(exception is InvalidOperationException
                 ? exception.Message
-                : "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala pt-BR.";
+                : "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala pt-BR.");
         }
     }
 
@@ -95,19 +91,73 @@ public sealed partial class MainWindow : Window
                 _viewModel.StatusMessage = "Entendi. Estou pensando...";
                 await _voice.StopListeningAsync();
                 await _viewModel.SubmitVoiceTextAsync(text);
-                if (!_voiceEnabled) return;
-                await _voice.SpeakAsync(_viewModel.AssistantResponse);
-                // Listening resumes only after playback ends, avoiding TTS feedback.
+            }
+            catch (InvalidOperationException exception)
+            {
+                // The chat is busy or not ready: keep voice mode enabled and listen
+                // again instead of disabling it permanently for a transient conflict.
+                _viewModel.StatusMessage = exception.Message;
+                await ResumeListeningAfterTurnAsync();
+                return;
             }
             catch (Exception)
             {
-                _viewModel.StatusMessage = "O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.";
-                _voiceEnabled = false;
+                DisableVoice("O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.");
+                return;
+            }
+
+            if (!_voiceEnabled)
+            {
                 _processingVoice = false;
-                VoiceButton.Content = "Voz";
-                _voice.InterruptSpeech();
+                return;
+            }
+
+            var response = _viewModel.AssistantResponse;
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                // PlaybackCompleted never fires without audio, which would leave
+                // _processingVoice stuck and the microphone off forever.
+                await ResumeListeningAfterTurnAsync();
+                return;
+            }
+
+            try
+            {
+                await _voice.SpeakAsync(response);
+                // Listening resumes only after playback ends, avoiding TTS feedback.
+            }
+            catch (InvalidOperationException exception)
+            {
+                DisableVoice(exception.Message);
+            }
+            catch (Exception)
+            {
+                DisableVoice("O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.");
             }
         });
+    }
+
+    private async Task ResumeListeningAfterTurnAsync()
+    {
+        _processingVoice = false;
+        if (!_voiceEnabled) return;
+        try
+        {
+            await _voice.StartListeningAsync();
+        }
+        catch (Exception)
+        {
+            DisableVoice("Não consegui reativar o microfone. Toque em Voz para tentar novamente.");
+        }
+    }
+
+    private void DisableVoice(string status)
+    {
+        _voiceEnabled = false;
+        _processingVoice = false;
+        VoiceButton.Content = "Voz";
+        _viewModel.StatusMessage = status;
+        _voice.InterruptSpeech();
     }
 
     private void OnSpeechPlaybackCompleted()
@@ -115,18 +165,7 @@ public sealed partial class MainWindow : Window
         DispatcherQueue.TryEnqueue(async () =>
         {
             if (!_voiceEnabled) return;
-            try
-            {
-                _processingVoice = false;
-                await _voice.StartListeningAsync();
-            }
-            catch (Exception)
-            {
-                _voiceEnabled = false;
-                _processingVoice = false;
-                VoiceButton.Content = "Voz";
-                _viewModel.StatusMessage = "Não consegui reativar o microfone. Toque em Voz para tentar novamente.";
-            }
+            await ResumeListeningAfterTurnAsync();
         });
     }
 
@@ -143,7 +182,15 @@ public sealed partial class MainWindow : Window
         _voice.Recognized -= OnVoiceRecognized;
         _voice.StatusChanged -= OnVoiceStatusChanged;
         _voice.PlaybackCompleted -= OnSpeechPlaybackCompleted;
-        await _voice.DisposeAsync();
+        try
+        {
+            await _voice.DisposeAsync();
+        }
+        catch (Exception exception)
+        {
+            // An async void handler must never crash the process while closing.
+            App.WriteStartupDiagnostic("MainWindow.Closed", exception);
+        }
     }
 
 
