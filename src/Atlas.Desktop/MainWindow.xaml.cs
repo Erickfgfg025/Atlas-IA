@@ -393,16 +393,6 @@ public sealed partial class MainWindow : Window
         _viewModel.StartWithWindows = startWithWindows.IsOn;
         _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
 
-        if (!string.IsNullOrWhiteSpace(apiKey.Password))
-        {
-            try { await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password); }
-            catch (Exception)
-            {
-                _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows.";
-                return;
-            }
-        }
-
         try
         {
             new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
@@ -411,7 +401,22 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception)
         {
-            _viewModel.StatusMessage = "Não foi possível aplicar as preferências de inicialização ou janela."; 
+            _viewModel.StatusMessage = "Não foi possível aplicar as preferências de inicialização ou janela.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey.Password)) return;
+
+        // The key is stored last so a storage failure cannot discard the other
+        // preference changes the user just confirmed.
+        try
+        {
+            await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password);
+        }
+        catch (Exception)
+        {
+            _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows. " +
+                                       "As demais preferências foram aplicadas nesta sessão.";
         }
     }
 }
