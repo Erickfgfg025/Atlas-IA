@@ -120,6 +120,13 @@ public partial class MainViewModel(
             AssistantResponse = response.Content;
             StatusMessage = $"Resposta recebida de {response.Provider} · {response.Model}";
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Keep the user prompt available so a canceled request can be retried.
+            ChatInput = prompt;
+            AssistantResponse = "Solicitação cancelada.";
+            StatusMessage = "A solicitação foi cancelada.";
+        }
         catch (InvalidOperationException exception)
         {
             AssistantResponse = exception.Message;
