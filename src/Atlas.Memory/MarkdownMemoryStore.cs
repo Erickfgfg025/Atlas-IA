@@ -34,9 +34,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         var now = DateTimeOffset.UtcNow;
         var entry = new MemoryEntry(Guid.NewGuid(), category, title.Trim(), content.Trim(), now, now);
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             var path = GetPath(entry);
             await WriteMarkdownAsync(path, entry, cancellationToken);
             try
@@ -63,9 +63,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<MemoryEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             var metadata = await FindMetadataAsync(id, cancellationToken);
             if (metadata is null) return null;
             var path = ResolveRelativePath(metadata.Value.Path);
@@ -80,9 +80,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     {
         if (limit is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be between 1 and 200.");
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             await using var connection = await OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = """
@@ -123,9 +123,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         if (content.Length > 100_000) throw new ArgumentException("Memory content cannot exceed 100,000 characters.", nameof(content));
 
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             var metadata = await FindMetadataAsync(id, cancellationToken) ?? throw new KeyNotFoundException($"Memory '{id}' was not found.");
             var oldPath = ResolveRelativePath(metadata.Path);
             var updated = new MemoryEntry(id, metadata.Category, title.Trim(), content.Trim(), metadata.Created, DateTimeOffset.UtcNow);
@@ -157,11 +157,18 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             var metadata = await FindMetadataAsync(id, cancellationToken);
             if (metadata is null) return false;
+
+            // Remove the authoritative Markdown file before deleting its index row.
+            // If file deletion fails, the database row remains so the operation can be retried.
+            var markdownPath = ResolveRelativePath(metadata.Value.Path);
+            if (File.Exists(markdownPath))
+                File.Delete(markdownPath);
+
             await using var connection = await OpenConnectionAsync(cancellationToken);
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
             await using (var command = connection.CreateCommand())
@@ -172,7 +179,6 @@ public sealed class MarkdownMemoryStore : IMemoryStore
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
             await transaction.CommitAsync(cancellationToken);
-            TryDelete(ResolveRelativePath(metadata.Value.Path));
             return true;
         }
         finally { _gate.Release(); }
@@ -181,9 +187,9 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<int> RebuildIndexAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            await _initialization.WaitAsync(cancellationToken);
             var recovered = new List<(MemoryEntry Entry, string Path)>();
             foreach (var file in Directory.EnumerateFiles(_vaultRoot, "*.md", SearchOption.AllDirectories))
             {
