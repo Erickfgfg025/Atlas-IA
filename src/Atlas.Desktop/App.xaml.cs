@@ -68,7 +68,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 Convert.ToString(args.ExceptionObject) ?? "Unknown unhandled exception"));
     }
 
-    private static void WriteStartupDiagnostic(string source, Exception exception)
+    internal static void WriteStartupDiagnostic(string source, Exception exception)
     {
         try
         {
