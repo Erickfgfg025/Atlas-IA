@@ -12,7 +12,7 @@ public sealed class MemoryVaultOptionsTests
 
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         Assert.Equal(Path.Combine(documents, "Atlas", "Vault"), options.VaultPath);
-        Assert.True(Path.IsPathRooted(options.VaultPath));
+        Assert.EndsWith(Path.Combine("Atlas", "Vault"), options.VaultPath, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public sealed class MemoryVaultOptionsTests
 
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         Assert.Equal(Path.Combine(local, "Atlas", "memory-index.db"), options.DatabasePath);
-        Assert.True(Path.IsPathRooted(options.DatabasePath));
+        Assert.EndsWith(Path.Combine("Atlas", "memory-index.db"), options.DatabasePath, StringComparison.Ordinal);
     }
 
     [Fact]

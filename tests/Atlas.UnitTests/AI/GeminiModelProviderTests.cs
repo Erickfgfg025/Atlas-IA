@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Atlas.AI;
 using Atlas.Application.Security;
@@ -31,9 +32,9 @@ public sealed class GeminiModelProviderTests
 
         // Gemini expects "model" (never "assistant") and a single trailing user turn.
         Assert.Equal(2, Regex.Matches(handler.LastRequestBody, "\"role\":\"user\"").Count);
-        Assert.Equal(1, Regex.Matches(handler.LastRequestBody, "\"role\":\"model\"").Count);
+        Assert.Single(Regex.Matches(handler.LastRequestBody, "\"role\":\"model\""));
         Assert.Contains("\"text\":\"Resposta anterior\"", handler.LastRequestBody);
-        Assert.Equal(1, Regex.Matches(handler.LastRequestBody, "Pergunta atual").Count);
+        Assert.Single(Regex.Matches(handler.LastRequestBody, "Pergunta atual"));
     }
 
     [Fact]
@@ -50,8 +51,12 @@ public sealed class GeminiModelProviderTests
         await provider.GenerateAsync(
             new ModelRequest("Oi", SystemInstruction: "Você é o Atlas."), CancellationToken.None);
 
-        Assert.Contains("\"systemInstruction\"", handler.LastRequestBody);
-        Assert.Contains("Você é o Atlas.", handler.LastRequestBody);
+        // Assert on the parsed payload: System.Text.Json escapes non-ASCII text.
+        using var payload = JsonDocument.Parse(handler.LastRequestBody);
+        var systemInstruction = payload.RootElement.GetProperty("systemInstruction");
+        Assert.Equal(
+            "Você é o Atlas.",
+            systemInstruction.GetProperty("parts")[0].GetProperty("text").GetString());
     }
 
     [Fact]
