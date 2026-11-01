@@ -27,8 +27,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         var providers = new Dictionary<string, IModelProvider>(StringComparer.Ordinal)
         {
             ["Gemini"] = new GeminiModelProvider(_httpClient, secretStore),
-            ["Ollama"] = new OllamaModelProvider(
-                _httpClient, new Uri(AtlasSettings.DefaultOllamaEndpoint), AtlasSettings.DefaultOllamaModel),
+            ["Ollama"] = new OllamaModelProvider(_httpClient, settingsStore),
             ["Hermes"] = new HermesAgentProvider()
         };
         var memoryStore = new MarkdownMemoryStore(MemoryVaultOptions.CreateDefault());
