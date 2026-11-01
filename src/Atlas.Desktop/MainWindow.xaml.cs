@@ -40,9 +40,10 @@ public sealed partial class MainWindow : Window
             new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
             WindowZOrder.SetAlwaysOnTop(WindowNative.GetWindowHandle(this), _viewModel.KeepWindowOnTop);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            _viewModel.StatusMessage = "Não foi possível carregar ou aplicar as preferências locais.";
+            App.WriteStartupDiagnostic("MainWindow.Loaded", exception);
+            _viewModel.StatusMessage = "Não foi possível carregar ou aplicar as preferências locais. Consulte o registro local.";
         }
     }
 
