@@ -51,7 +51,7 @@ public sealed class ModelProviderTests
         Assert.Equal("Resposta local", result.Content);
         Assert.Equal("Ollama", result.Provider);
         Assert.Equal("http://127.0.0.1:11435/api/chat", handler.LastRequestUri);
-        Assert.Contains("\"Model\":\"qwen2.5:7b\"", handler.LastRequestBody);
+        Assert.Contains("\"model\":\"qwen2.5:7b\"", handler.LastRequestBody);
     }
 
     private sealed class StubSecretStore(string? secret) : ISecretStore
