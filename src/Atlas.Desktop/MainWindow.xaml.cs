@@ -290,6 +290,18 @@ public sealed partial class MainWindow : Window
             IsOn = _viewModel.KeepWindowOnTop
         };
 
+        var ollamaModel = new TextBox
+        {
+            Header = "Modelo Ollama",
+            Text = _viewModel.OllamaModel,
+            PlaceholderText = "Ex.: llama3.2"
+        };
+        var ollamaEndpoint = new TextBox
+        {
+            Header = "Endereço local do Ollama",
+            Text = _viewModel.OllamaEndpoint,
+            PlaceholderText = "http://127.0.0.1:11434/"
+        };
         var apiKey = new PasswordBox
         {
             PlaceholderText = "Nova chave Gemini (opcional)",
@@ -300,6 +312,8 @@ public sealed partial class MainWindow : Window
         content.Children.Add(new TextBlock { Text = "Provedor de IA" });
         content.Children.Add(provider);
         content.Children.Add(allowCloud);
+        content.Children.Add(ollamaModel);
+        content.Children.Add(ollamaEndpoint);
         content.Children.Add(useMemory);
         content.Children.Add(startWithWindows);
         content.Children.Add(keepOnTop);
@@ -325,6 +339,8 @@ public sealed partial class MainWindow : Window
 
         _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
         _viewModel.EnableCloudRequests = allowCloud.IsOn;
+        _viewModel.OllamaModel = ollamaModel.Text;
+        _viewModel.OllamaEndpoint = ollamaEndpoint.Text;
         _viewModel.EnableMemoryContext = useMemory.IsOn;
         _viewModel.StartWithWindows = startWithWindows.IsOn;
         _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
