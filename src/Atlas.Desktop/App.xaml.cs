@@ -50,7 +50,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs args)
     {
         WriteStartupDiagnostic("WinUI.UnhandledException", args.Exception);
         // Keep the default crash behavior; swallowing a partially initialized XAML
