@@ -36,10 +36,13 @@ public sealed class MemoryAwareModelRouter(
         if (!settings.EnableMemoryContext)
             return await innerRouter.GenerateAsync(request, cancellationToken);
 
+        // Ignore common words and cap lookups to avoid repeated full-text scans of the
+        // local SQLite index for every token in a long prompt.
         var terms = TermsPattern.Matches(request.Prompt)
             .Select(match => match.Value)
+            .Where(term => !StopWords.Contains(term))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(8)
+            .Take(4)
             .ToArray();
 
         var matches = new Dictionary<Guid, MemoryEntry>();
