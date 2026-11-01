@@ -23,10 +23,11 @@ jobs:
       - name: Restore
         run: dotnet restore Atlas.sln
 
-      - name: Build and test
-        run: |
-          dotnet build Atlas.sln -c Release --no-restore
-          dotnet test Atlas.sln -c Release --no-build
+      - name: Build
+        run: dotnet build Atlas.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Atlas.sln -c Release --no-build
 
       - name: Publish unpackaged WinUI app
         run: >
