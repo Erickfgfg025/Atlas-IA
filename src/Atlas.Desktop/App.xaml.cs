@@ -19,9 +19,11 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     public App()
     {
-        InitializeComponent();
+        // Register diagnostics before loading App.xaml resources so failures during
+        // XAML initialization have a chance to be recorded.
         UnhandledException += OnUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+        InitializeComponent();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
