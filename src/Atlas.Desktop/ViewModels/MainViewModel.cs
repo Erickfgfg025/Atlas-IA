@@ -36,6 +36,12 @@ public partial class MainViewModel(
     public partial string PreferredProvider { get; set; } = AtlasSettings.DefaultProvider;
 
     [ObservableProperty]
+    public partial string OllamaModel { get; set; } = AtlasSettings.DefaultOllamaModel;
+
+    [ObservableProperty]
+    public partial string OllamaEndpoint { get; set; } = AtlasSettings.DefaultOllamaEndpoint;
+
+    [ObservableProperty]
     public partial string StatusMessage { get; set; } = "Configurações locais carregadas.";
 
     [ObservableProperty]
@@ -74,6 +80,8 @@ public partial class MainViewModel(
         KeepWindowOnTop = settings.KeepWindowOnTop;
         PreferredProvider = settings.PreferredProvider;
         StartWithWindows = settings.StartWithWindows;
+        OllamaModel = settings.OllamaModel;
+        OllamaEndpoint = settings.OllamaEndpoint;
     }
 
     public async Task SaveGeminiApiKeyAsync(string apiKey)
@@ -253,7 +261,9 @@ public partial class MainViewModel(
                 EnableMemoryContext = EnableMemoryContext,
                 StartWithWindows = StartWithWindows,
                 KeepWindowOnTop = KeepWindowOnTop,
-                PreferredProvider = PreferredProvider
+                PreferredProvider = PreferredProvider,
+                OllamaModel = OllamaModel.Trim(),
+                OllamaEndpoint = OllamaEndpoint.Trim()
             }.Validate();
 
             await settingsStore.SaveAsync(settings, cancellationToken);
