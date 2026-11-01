@@ -149,6 +149,12 @@ public partial class MainViewModel(
             AssistantResponse = "O provedor demorou demais para responder. Tente novamente.";
             StatusMessage = "Tempo limite da solicitação.";
         }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.SendMessage", exception);
+            AssistantResponse = "Ocorreu uma falha inesperada. Consulte o registro local em %LOCALAPPDATA%\\Atlas\\Logs\\startup-crash.log.";
+            StatusMessage = "Falha inesperada ao processar a solicitação.";
+        }
         finally
         {
             IsBusy = false;
@@ -176,6 +182,11 @@ public partial class MainViewModel(
         {
             StatusMessage = "Não foi possível salvar a memória local.";
         }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.SaveLastExchange", exception);
+            StatusMessage = "Falha inesperada ao salvar a memória.";
+        }
     }
 
     [RelayCommand]
@@ -193,6 +204,11 @@ public partial class MainViewModel(
         catch (Exception exception) when (exception is IOException or DbException or InvalidDataException)
         {
             StatusMessage = "Não foi possível carregar as memórias locais.";
+        }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.RefreshMemories", exception);
+            StatusMessage = "Falha inesperada ao carregar as memórias.";
         }
     }
 
@@ -219,6 +235,11 @@ public partial class MainViewModel(
                 ? "Título ou conteúdo inválido. Confira os limites e tente novamente."
                 : "Não foi possível atualizar a memória local.";
         }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.SaveSelectedMemory", exception);
+            StatusMessage = "Falha inesperada ao atualizar a memória.";
+        }
     }
 
     [RelayCommand]
@@ -240,6 +261,11 @@ public partial class MainViewModel(
         {
             StatusMessage = "Não foi possível excluir a memória local.";
         }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.DeleteSelectedMemory", exception);
+            StatusMessage = "Falha inesperada ao excluir a memória.";
+        }
     }
 
     [RelayCommand]
@@ -254,6 +280,11 @@ public partial class MainViewModel(
         catch (Exception exception) when (exception is IOException or DbException or InvalidDataException)
         {
             StatusMessage = "Não foi possível reconstruir o índice da memória.";
+        }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.RebuildMemoryIndex", exception);
+            StatusMessage = "Falha inesperada ao reconstruir o índice.";
         }
     }
 
@@ -283,6 +314,11 @@ public partial class MainViewModel(
         catch (IOException)
         {
             StatusMessage = "Não foi possível salvar as preferências. Verifique o acesso à pasta de dados.";
+        }
+        catch (Exception exception)
+        {
+            global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.SaveSettings", exception);
+            StatusMessage = "Falha inesperada ao salvar as preferências.";
         }
     }
 }
