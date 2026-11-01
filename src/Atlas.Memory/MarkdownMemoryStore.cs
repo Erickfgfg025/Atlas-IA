@@ -1,4 +1,10 @@
-using System.Text;
+await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);using System.Text;
 using Atlas.Application.Memory;
 using Microsoft.Data.Sqlite;
 
@@ -12,6 +18,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     private readonly string _vaultRoot;
     private readonly string _connectionString;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly Task _initialization;
 
     public MarkdownMemoryStore(MemoryVaultOptions options)
     {
@@ -24,7 +31,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadWriteCreate, Cache = SqliteCacheMode.Shared }.ToString();
         Directory.CreateDirectory(_vaultRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
-        InitializeDatabaseAsync(CancellationToken.None).GetAwaiter().GetResult();
+        _initialization = InitializeDatabaseAsync(CancellationToken.None);
     }
 
     public async Task<MemoryEntry> CreateAsync(MemoryCategory category, string title, string content, CancellationToken cancellationToken = default)
