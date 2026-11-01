@@ -129,11 +129,13 @@ public partial class MainViewModel(
         }
         catch (InvalidOperationException exception)
         {
+            ChatInput = prompt;
             AssistantResponse = exception.Message;
             StatusMessage = "A solicitação não pôde ser iniciada.";
         }
         catch (HttpRequestException)
         {
+            ChatInput = prompt;
             AssistantResponse = PreferredProvider == "Ollama"
                 ? "Não consegui conectar ao Ollama local. Confirme se ele está instalado, aberto e com o modelo baixado."
                 : "Não consegui conectar ao Gemini. Verifique sua conexão, a chave e o acesso à API.";
@@ -141,16 +143,19 @@ public partial class MainViewModel(
         }
         catch (Exception exception) when (exception is DbException or IOException)
         {
+            ChatInput = prompt;
             AssistantResponse = "Não consegui consultar a memória local. Verifique a pasta de dados ou desative o contexto de memória nas preferências.";
             StatusMessage = "Falha ao acessar a memória local.";
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            ChatInput = prompt;
             AssistantResponse = "O provedor demorou demais para responder. Tente novamente.";
             StatusMessage = "Tempo limite da solicitação.";
         }
         catch (Exception exception)
         {
+            ChatInput = prompt;
             global::Atlas.Desktop.App.WriteStartupDiagnostic("MainViewModel.SendMessage", exception);
             AssistantResponse = "Ocorreu uma falha inesperada. Consulte o registro local em %LOCALAPPDATA%\\Atlas\\Logs\\startup-crash.log.";
             StatusMessage = "Falha inesperada ao processar a solicitação.";
