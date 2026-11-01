@@ -56,8 +56,47 @@ public sealed class MarkdownMemoryStoreTests : IDisposable
         Assert.Equal("New content", (await _store.GetAsync(created.Id))!.Content);
         Assert.True(await _store.DeleteAsync(created.Id));
         Assert.Null(await _store.GetAsync(created.Id));
+        Assert.Equal(0, await _store.RebuildIndexAsync());
+        Assert.Null(await _store.GetAsync(created.Id));
     }
 
+    [Fact]
+    public async Task Delete_WhenMarkdownFileIsLocked_KeepsIndexEntryForRetry()
+    {
+        var created = await _store.CreateAsync(MemoryCategory.Projects, "Locked file", "Must remain indexed.");
+        var markdownFile = Directory.GetFiles(
+            Path.Combine(_root, "vault"), "*.md", SearchOption.AllDirectories).Single();
+
+        using (new FileStream(markdownFile, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            await Assert.ThrowsAnyAsync<IOException>(() => _store.DeleteAsync(created.Id));
+        }
+
+        Assert.NotNull(await _store.GetAsync(created.Id));
+        Assert.Single(await _store.SearchAsync("Must remain indexed"));
+    }
+
+    [Fact]
+    public async Task FailedInitialization_DoesNotLeaveOperationGateLocked()
+    {
+        var brokenRoot = Path.Combine(_root, "broken-initialization");
+        var vault = Path.Combine(brokenRoot, "vault");
+        var databasePath = Path.Combine(brokenRoot, "index.db");
+        Directory.CreateDirectory(databasePath); // SQLite cannot open a directory as a database file.
+
+        var brokenStore = new MarkdownMemoryStore(new MemoryVaultOptions(vault, databasePath));
+
+        var firstError = await Record.ExceptionAsync(async () =>
+            await brokenStore.SearchAsync("first").WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.NotNull(firstError);
+        Assert.IsNotType<TimeoutException>(firstError);
+
+        var secondError = await Record.ExceptionAsync(async () =>
+            await brokenStore.SearchAsync("second").WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.NotNull(secondError);
+        Assert.IsNotType<TimeoutException>(secondError);
+        Assert.Equal(firstError.GetType(), secondError.GetType());
+    }
 
     [Fact]
     public async Task ConstructorMigratesLegacyIndexWithoutContentColumn()
