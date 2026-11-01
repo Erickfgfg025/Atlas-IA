@@ -13,11 +13,24 @@ namespace Atlas.Desktop.Services;
 public sealed class VoiceInteractionService : IAsyncDisposable
 {
     private SpeechRecognizer? _recognizer;
-    private readonly SpeechSynthesizer _synthesizer = new();
+    private readonly SpeechSynthesizer _synthesizer;
     private readonly MediaPlayer _player = new();
     private SpeechSynthesisStream? _speechStream;
     private bool _isListening;
+    private bool _hasBrazilianVoice;
     private bool _disposed;
+
+    public VoiceInteractionService()
+    {
+        _synthesizer = new SpeechSynthesizer();
+        var brazilianVoice = SpeechSynthesizer.AllVoices.FirstOrDefault(voice =>
+            string.Equals(voice.Language, "pt-BR", StringComparison.OrdinalIgnoreCase));
+        if (brazilianVoice is not null)
+        {
+            _synthesizer.Voice = brazilianVoice;
+            _hasBrazilianVoice = true;
+        }
+    }
 
     public event Action<string>? Recognized;
     public event Action<string>? StatusChanged;
@@ -31,17 +44,29 @@ public sealed class VoiceInteractionService : IAsyncDisposable
         StopSpeech();
         if (_recognizer is null)
         {
-            _recognizer = new SpeechRecognizer(new Language("pt-BR"));
-            _recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(
+            var recognizer = new SpeechRecognizer(new Language("pt-BR"));
+            _recognizer = recognizer;
+            recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(
                 SpeechRecognitionScenario.Dictation, "atlas_assistant"));
-            _recognizer.ContinuousRecognitionSession.ResultGenerated += OnResultGenerated;
-            _recognizer.ContinuousRecognitionSession.Completed += OnRecognitionCompleted;
+            recognizer.ContinuousRecognitionSession.ResultGenerated += OnResultGenerated;
+            recognizer.ContinuousRecognitionSession.Completed += OnRecognitionCompleted;
 
-            var compilation = await _recognizer.CompileConstraintsAsync();
-            cancellationToken.ThrowIfCancellationRequested();
-            if (compilation.Status != SpeechRecognitionResultStatus.Success)
-                throw new InvalidOperationException(
-                    "O reconhecimento pt-BR não está disponível. Instale o pacote de fala Português (Brasil) no Windows.");
+            try
+            {
+                var compilation = await recognizer.CompileConstraintsAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                if (compilation.Status != SpeechRecognitionResultStatus.Success)
+                    throw new InvalidOperationException(
+                        "O reconhecimento pt-BR não está disponível. Instale o pacote de fala Português (Brasil) no Windows.");
+            }
+            catch
+            {
+                _recognizer = null;
+                recognizer.ContinuousRecognitionSession.ResultGenerated -= OnResultGenerated;
+                recognizer.ContinuousRecognitionSession.Completed -= OnRecognitionCompleted;
+                recognizer.Dispose();
+                throw;
+            }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -77,6 +102,9 @@ public sealed class VoiceInteractionService : IAsyncDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (string.IsNullOrWhiteSpace(text)) return;
+        if (!_hasBrazilianVoice)
+            throw new InvalidOperationException(
+                "Não encontrei uma voz de síntese Português (Brasil). Instale uma voz pt-BR nas configurações de fala do Windows.");
 
         StopSpeech();
         StatusChanged?.Invoke("Falando");
