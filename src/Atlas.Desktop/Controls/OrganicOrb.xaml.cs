@@ -31,7 +31,7 @@ public sealed partial class OrganicOrb : UserControl
 
     private void AddWaveAnimation(
         Compositor compositor,
-        UIElement element,
+        FrameworkElement element,
         float from,
         float to,
         TimeSpan duration)
