@@ -70,9 +70,15 @@ public sealed class JsonSettingsStore : ISettingsStore
         }
         finally
         {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-            _gate.Release();
+            try
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
     }
 }
