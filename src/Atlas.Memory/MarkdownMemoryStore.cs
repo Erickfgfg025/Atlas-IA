@@ -268,8 +268,16 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
     {
         var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        return connection;
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
     private async Task<(MemoryCategory Category, string Title, string Path, DateTimeOffset Created, DateTimeOffset Updated)?> FindMetadataAsync(Guid id, CancellationToken cancellationToken)
