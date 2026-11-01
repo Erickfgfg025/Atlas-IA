@@ -90,6 +90,20 @@ public sealed class MarkdownMemoryStoreTests : IDisposable
         Assert.Single(await migrated.SearchAsync("Legacy index"));
     }
 
+    [Fact]
+    public async Task UpdateRejectsContentOverLimit_WithoutChangingStoredMemory()
+    {
+        var created = await _store.CreateAsync(MemoryCategory.Projects, "Stable title", "Stable content");
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _store.UpdateAsync(created.Id, "Changed title", new string('x', 100_001)));
+
+        var loaded = await _store.GetAsync(created.Id);
+        Assert.NotNull(loaded);
+        Assert.Equal("Stable title", loaded.Title);
+        Assert.Equal("Stable content", loaded.Content);
+    }
+
     public void Dispose()
     {
         try { if (Directory.Exists(_root)) Directory.Delete(_root, true); } catch (IOException) { }
