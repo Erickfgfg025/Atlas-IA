@@ -1,5 +1,8 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using Atlas.AI;
 using Atlas.Application.AI;
 using Atlas.Application.Memory;
@@ -14,6 +17,9 @@ namespace Atlas.Desktop;
 
 public partial class App : Microsoft.UI.Xaml.Application
 {
+    private const long MaxDiagnosticLogBytes = 1_048_576; // 1 MiB
+    private const uint MessageBoxIconError = 0x10;
+
     private Window? _window;
     private readonly HttpClient _httpClient = new();
 
@@ -23,7 +29,15 @@ public partial class App : Microsoft.UI.Xaml.Application
         // XAML initialization have a chance to be recorded.
         UnhandledException += OnUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
-        InitializeComponent();
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception exception)
+        {
+            WriteStartupDiagnostic("App.InitializeComponent", exception);
+            ShowStartupFailure(exception);
+        }
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -48,7 +62,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         catch (Exception exception)
         {
             WriteStartupDiagnostic("OnLaunched", exception);
-            throw;
+            ShowStartupFailure(exception);
         }
     }
 
@@ -68,23 +82,65 @@ public partial class App : Microsoft.UI.Xaml.Application
                 Convert.ToString(args.ExceptionObject) ?? "Unknown unhandled exception"));
     }
 
+    /// <summary>
+    /// Presents a fatal startup failure to the user with the full exception chain
+    /// (including the inner exceptions a XamlParseException carries) and the log
+    /// location, then terminates instead of leaving a silent crash behind.
+    /// </summary>
+    [DoesNotReturn]
+    private static void ShowStartupFailure(Exception exception)
+    {
+        var logPath = GetDiagnosticLogPath();
+        var header = exception is XamlParseException
+            ? "O Atlas não conseguiu carregar a interface (XAML).\n\n" +
+              "Causa comum: instalação incompleta do Windows App SDK. Reinstale o Atlas " +
+              "ou instale o runtime do Windows App SDK e abra novamente.\n\n"
+            : "O Atlas não conseguiu iniciar.\n\n";
+        var message = header +
+                      DescribeExceptionChain(exception) +
+                      "\n\nRegistro completo:\n" + logPath;
+
+        try
+        {
+            MessageBox(IntPtr.Zero, message, "Atlas — falha de inicialização", MessageBoxIconError);
+        }
+        finally
+        {
+            Environment.Exit(1);
+        }
+    }
+
+    private static string DescribeExceptionChain(Exception exception)
+    {
+        var builder = new StringBuilder();
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            builder.Append(current.GetType().FullName)
+                   .Append(" (0x").Append(current.HResult.ToString("X8")).AppendLine(")")
+                   .AppendLine(current.Message);
+        }
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string GetDiagnosticLogPath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Atlas", "Logs", "startup-crash.log");
+
     internal static void WriteStartupDiagnostic(string source, Exception exception)
     {
         try
         {
-            var directory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Atlas", "Logs");
-            Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, "startup-crash.log");
+            var path = GetDiagnosticLogPath();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            RotateDiagnosticLog(path);
             var entry = $"""
                 [{DateTimeOffset.Now:O}] {source}
                 OS: {Environment.OSVersion}
-                Framework: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}
+                Framework: {RuntimeInformation.FrameworkDescription}
                 Process: {Environment.ProcessPath}
-                Architecture: {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}
+                Architecture: {RuntimeInformation.ProcessArchitecture}
                 {exception}
-                
+
                 """;
             File.AppendAllText(path, entry + Environment.NewLine);
         }
@@ -93,4 +149,22 @@ public partial class App : Microsoft.UI.Xaml.Application
             // Diagnostics must never become a second source of startup failure.
         }
     }
+
+    private static void RotateDiagnosticLog(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (info.Exists && info.Length > MaxDiagnosticLogBytes)
+                File.Move(path, path + ".old", overwrite: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Keep writing to the current log when rotation is not possible.
+        }
+    }
+
+    // Resolves to MessageBoxW under CharSet.Unicode; used only for fatal startup failures.
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
 }
