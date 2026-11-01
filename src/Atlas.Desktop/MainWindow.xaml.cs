@@ -170,8 +170,7 @@ public sealed partial class MainWindow : Window
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             MinHeight = 130,
-            MaxHeight = 220,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            MaxHeight = 220
         };
         list.SelectionChanged += (_, _) =>
         {
