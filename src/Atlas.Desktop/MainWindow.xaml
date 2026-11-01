@@ -1,0 +1,109 @@
+<Window
+    x:Class="Atlas.Desktop.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Atlas.Desktop.Controls"
+    Title="Atlas">
+    <Border x:Name="RootLayout" Background="{StaticResource AtlasBackgroundBrush}" Padding="28,22">
+    <Grid RowSpacing="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel Spacing="2">
+                <TextBlock Text="ATLAS" FontSize="17" FontWeight="Bold" CharacterSpacing="180"/>
+                <TextBlock Text="ASSISTENTE PESSOAL" FontSize="9"
+                           Foreground="{StaticResource AtlasMutedBrush}" CharacterSpacing="140"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Spacing="8">
+                <Ellipse Width="7" Height="7" Fill="#65C18C"/>
+                <TextBlock Text="PRONTO" FontSize="10"
+                           Foreground="{StaticResource AtlasMutedBrush}"/>
+                <Button x:Name="MemoryButton" Content="Memória" Click="OpenMemory_Click"
+                        CornerRadius="10" Background="#202329" BorderBrush="#343740" BorderThickness="1"/>
+                <Button x:Name="SettingsButton" Content="Configurações"
+                        Click="OpenSettings_Click" CornerRadius="10"
+                        Background="#202329" BorderBrush="#343740" BorderThickness="1"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" RowSpacing="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel HorizontalAlignment="Center" Spacing="2">
+                <controls:OrganicOrb Width="520" Height="150"/>
+                <TextBlock Text="Estou aqui. O que vamos fazer?"
+                           FontSize="24" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           Foreground="{StaticResource AtlasTextBrush}"/>
+                <TextBlock Text="Converse por texto ou fale em turnos com o Atlas."
+                           FontSize="11" HorizontalAlignment="Center"
+                           Foreground="{StaticResource AtlasMutedBrush}"/>
+            </StackPanel>
+
+            <Border Grid.Row="1" Background="{StaticResource AtlasSurfaceBrush}"
+                    BorderBrush="#30333A" BorderThickness="1"
+                    CornerRadius="18" Padding="18">
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="CONVERSA" FontSize="9" CharacterSpacing="150"
+                               Foreground="{StaticResource AtlasMutedBrush}"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding AssistantResponse}"
+                                   TextWrapping="Wrap" FontSize="14" LineHeight="22"
+                                   Foreground="{StaticResource AtlasTextBrush}"/>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                HorizontalAlignment="Right" Spacing="8">
+                        <Button Content="Salvar na memória"
+                                Command="{Binding SaveLastExchangeCommand}"
+                                CornerRadius="9"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="10"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AtlasMutedBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="2" ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding ChatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Escreva para o Atlas..."
+                         AcceptsReturn="True" MinHeight="52" MaxHeight="120"
+                         TextWrapping="Wrap" CornerRadius="14"
+                         VerticalContentAlignment="Center"/>
+                <Button Grid.Column="1" Content="Enviar"
+                        Command="{Binding SendMessageCommand}"
+                        MinHeight="52" MinWidth="92" CornerRadius="14"
+                        Background="{StaticResource AtlasAccentBrush}"
+                        Foreground="#17100A"/>
+                <Button x:Name="VoiceButton" Grid.Column="2" Content="Voz"
+                        Click="VoiceButton_Click" MinHeight="52" MinWidth="84"
+                        CornerRadius="14"
+                        ToolTipService.ToolTip="Ativar ou pausar conversa por voz."/>
+            </Grid>
+        </Grid>
+
+        <TextBlock Grid.Row="2"
+                   Text="Privacidade em primeiro lugar · suas memórias permanecem neste computador."
+                   FontSize="10" HorizontalAlignment="Center"
+                   Foreground="{StaticResource AtlasMutedBrush}"/>
+        </Grid>
+</Border>
+</Window>

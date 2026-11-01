@@ -1,0 +1,28 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore Atlas.sln
+      - name: Build
+        run: dotnet build Atlas.sln --no-restore -c Release
+      - name: Test
+        run: dotnet test Atlas.sln --no-build -c Release --logger "console;verbosity=normal"
+      - name: Publish Windows x64 app
+        run: dotnet publish src/Atlas.Desktop/Atlas.Desktop.csproj -c Release -r win-x64 --self-contained true -p:WindowsAppSDKSelfContained=true -p:WindowsPackageType=None -o artifacts/publish

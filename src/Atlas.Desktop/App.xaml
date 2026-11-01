@@ -1,0 +1,18 @@
+<Application
+    x:Class="Atlas.Desktop.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    RequestedTheme="Dark">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+            <SolidColorBrush x:Key="AtlasBackgroundBrush" Color="#101114"/>
+            <SolidColorBrush x:Key="AtlasSurfaceBrush" Color="#191B20"/>
+            <SolidColorBrush x:Key="AtlasTextBrush" Color="#F4F4F5"/>
+            <SolidColorBrush x:Key="AtlasMutedBrush" Color="#92949C"/>
+            <SolidColorBrush x:Key="AtlasAccentBrush" Color="#F28C28"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
