@@ -17,9 +17,6 @@
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>
-                <Path.RenderTransform>
-                    <ScaleTransform x:Name="BackWaveScale" CenterX="400" CenterY="300" ScaleY="1"/>
-                </Path.RenderTransform>
             </Path>
             <Path x:Name="MainWave" StrokeThickness="11" Opacity="0.95"
                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -33,9 +30,6 @@
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>
-                <Path.RenderTransform>
-                    <ScaleTransform x:Name="MainWaveScale" CenterX="400" CenterY="300" ScaleY="1"/>
-                </Path.RenderTransform>
             </Path>
             <Path x:Name="FrontWave" StrokeThickness="5" Opacity="0.72"
                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -49,9 +43,6 @@
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>
-                <Path.RenderTransform>
-                    <ScaleTransform x:Name="FrontWaveScale" CenterX="400" CenterY="300" ScaleY="1"/>
-                </Path.RenderTransform>
             </Path>
         </Grid>
     </Viewbox>
