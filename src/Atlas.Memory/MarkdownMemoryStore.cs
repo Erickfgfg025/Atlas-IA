@@ -1,10 +1,4 @@
-await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);await _gate.WaitAsync(cancellationToken);
-        await _initialization.WaitAsync(cancellationToken);using System.Text;
+using System.Text;
 using Atlas.Application.Memory;
 using Microsoft.Data.Sqlite;
 
@@ -40,6 +34,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         var now = DateTimeOffset.UtcNow;
         var entry = new MemoryEntry(Guid.NewGuid(), category, title.Trim(), content.Trim(), now, now);
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             var path = GetPath(entry);
@@ -68,6 +63,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<MemoryEntry?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             var metadata = await FindMetadataAsync(id, cancellationToken);
@@ -84,6 +80,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     {
         if (limit is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(limit), "Limit must be between 1 and 200.");
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -126,6 +123,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         if (content.Length > 100_000) throw new ArgumentException("Memory content cannot exceed 100,000 characters.", nameof(content));
 
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             var metadata = await FindMetadataAsync(id, cancellationToken) ?? throw new KeyNotFoundException($"Memory '{id}' was not found.");
@@ -159,6 +157,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             var metadata = await FindMetadataAsync(id, cancellationToken);
@@ -182,6 +181,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
     public async Task<int> RebuildIndexAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
             var recovered = new List<(MemoryEntry Entry, string Path)>();
