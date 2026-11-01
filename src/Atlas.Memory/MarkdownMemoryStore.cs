@@ -116,6 +116,7 @@ public sealed class MarkdownMemoryStore : IMemoryStore
         if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("Title is required.", nameof(title));
         if (string.IsNullOrWhiteSpace(content)) throw new ArgumentException("Content is required.", nameof(content));
         if (title.Length > 200) throw new ArgumentException("Title cannot exceed 200 characters.", nameof(title));
+        if (content.Length > 100_000) throw new ArgumentException("Memory content cannot exceed 100,000 characters.", nameof(content));
 
         await _gate.WaitAsync(cancellationToken);
         try
