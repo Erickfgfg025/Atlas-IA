@@ -36,6 +36,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         catch (Exception exception)
         {
             WriteStartupDiagnostic("App.InitializeComponent", exception);
+            if (exception is Microsoft.UI.Xaml.Markup.XamlParseException)
+                WriteStartupCanaries();
             ShowStartupFailure(exception);
         }
     }
@@ -62,6 +64,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         catch (Exception exception)
         {
             WriteStartupDiagnostic("OnLaunched", exception);
+            if (exception is Microsoft.UI.Xaml.Markup.XamlParseException)
+                WriteStartupCanaries();
             ShowStartupFailure(exception);
         }
     }
@@ -91,7 +95,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private static void ShowStartupFailure(Exception exception)
     {
         var logPath = GetDiagnosticLogPath();
-        var header = exception is XamlParseException
+        var header = exception is Microsoft.UI.Xaml.Markup.XamlParseException
             ? "O Atlas não conseguiu carregar a interface (XAML).\n\n" +
               "Causa comum: instalação incompleta do Windows App SDK. Reinstale o Atlas " +
               "ou instale o runtime do Windows App SDK e abra novamente.\n\n"
@@ -118,8 +122,95 @@ public partial class App : Microsoft.UI.Xaml.Application
             builder.Append(current.GetType().FullName)
                    .Append(" (0x").Append(current.HResult.ToString("X8")).AppendLine(")")
                    .AppendLine(current.Message);
+            foreach (System.Collections.DictionaryEntry entry in current.Data)
+            {
+                builder.Append("  Data[").Append(entry.Key).Append("] = ")
+                       .AppendLine(Convert.ToString(entry.Value) ?? "(null)");
+            }
         }
         return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Isolates the cause of a XamlParseException that carries no inner exception:
+    /// verifies payload files next to the executable, that the application brushes
+    /// resolve, that a parse-time StaticResource lookup succeeds, and that the
+    /// custom sound-wave control can be activated. Never throws; results are
+    /// appended to the diagnostic log.
+    /// </summary>
+    private static void WriteStartupCanaries()
+    {
+        try
+        {
+            var report = new StringBuilder();
+            foreach (var fileName in new[]
+                     {
+                         "resources.pri", "Microsoft.ui.xaml.dll", "Microsoft.WindowsAppRuntime.dll"
+                     })
+            {
+                var path = Path.Combine(AppContext.BaseDirectory, fileName);
+                report.Append(fileName).Append(": ");
+                report.AppendLine(File.Exists(path)
+                    ? new FileInfo(path).Length + " bytes"
+                    : "MISSING");
+            }
+
+            try
+            {
+                var dictionary = Application.Current?.Resources;
+                if (dictionary is null)
+                {
+                    report.AppendLine("App resources: Application.Current.Resources is null");
+                }
+                else
+                {
+                    var brush = dictionary["AtlasBackgroundBrush"];
+                    report.Append("App resource AtlasBackgroundBrush: ")
+                          .AppendLine(brush is null ? "NOT FOUND" : brush.GetType().FullName ?? "unknown");
+                }
+            }
+            catch (Exception exception)
+            {
+                report.Append("App resource AtlasBackgroundBrush: FAILED ")
+                      .Append(exception.GetType().Name)
+                      .Append(" (0x").Append(exception.HResult.ToString("X8")).Append(") ")
+                      .AppendLine(exception.Message);
+            }
+
+            try
+            {
+                Microsoft.UI.Xaml.Markup.XamlReader.Load(
+                    "<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                    "Background=\"{StaticResource AtlasBackgroundBrush}\"/>");
+                report.AppendLine("Parse-time StaticResource probe: OK");
+            }
+            catch (Exception exception)
+            {
+                report.Append("Parse-time StaticResource probe: FAILED ")
+                      .Append(exception.GetType().FullName)
+                      .Append(" (0x").Append(exception.HResult.ToString("X8")).Append(") ")
+                      .AppendLine(exception.Message);
+            }
+
+            try
+            {
+                _ = new Atlas.Desktop.Controls.OrganicOrb();
+                report.AppendLine("OrganicOrb activation probe: OK");
+            }
+            catch (Exception exception)
+            {
+                report.Append("OrganicOrb activation probe: FAILED ")
+                      .Append(exception.GetType().FullName)
+                      .Append(" (0x").Append(exception.HResult.ToString("X8")).Append(") ")
+                      .AppendLine(exception.Message);
+            }
+
+            WriteStartupDiagnostic("StartupCanary", new Exception(report.ToString().TrimEnd()));
+        }
+        catch
+        {
+            // Canary diagnostics must never mask the original failure.
+        }
     }
 
     private static string GetDiagnosticLogPath() => Path.Combine(
