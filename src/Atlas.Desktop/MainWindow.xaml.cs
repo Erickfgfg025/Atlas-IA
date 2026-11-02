@@ -294,7 +294,18 @@ public sealed partial class MainWindow : Window
             CloseButtonText = "Fechar",
             XamlRoot = RootLayout.XamlRoot
         };
-        await dialog.ShowAsync();
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            // WinUI throws when a second ContentDialog opens while another is still
+            // showing; an unhandled exception from an async void handler would kill
+            // the process on a rapid double-click.
+            App.WriteStartupDiagnostic("MainWindow.MemoryDialog", exception);
+            _viewModel.StatusMessage = "Não foi possível abrir o diálogo de memórias.";
+        }
     }
 
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
@@ -383,7 +394,19 @@ public sealed partial class MainWindow : Window
             XamlRoot = RootLayout.XamlRoot
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        ContentDialogResult dialogResult;
+        try
+        {
+            dialogResult = await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            App.WriteStartupDiagnostic("MainWindow.SettingsDialog", exception);
+            _viewModel.StatusMessage = "Não foi possível abrir o diálogo de configurações.";
+            return;
+        }
+
+        if (dialogResult != ContentDialogResult.Primary) return;
 
         _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
         _viewModel.EnableCloudRequests = allowCloud.IsOn;

@@ -97,8 +97,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         var logPath = GetDiagnosticLogPath();
         var header = exception is Microsoft.UI.Xaml.Markup.XamlParseException
             ? "O Atlas não conseguiu carregar a interface (XAML).\n\n" +
-              "Causa comum: instalação incompleta do Windows App SDK. Reinstale o Atlas " +
-              "ou instale o runtime do Windows App SDK e abra novamente.\n\n"
+              "Detalhes técnicos abaixo: envie o registro indicado ao final para " +
+              "diagnóstico. Se os arquivos do Windows App SDK estiverem ausentes, " +
+              "reinstale o Atlas.\n\n"
             : "O Atlas não conseguiu iniciar.\n\n";
         var message = header +
                       DescribeExceptionChain(exception) +
