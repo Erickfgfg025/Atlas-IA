@@ -14,6 +14,12 @@ public sealed record AtlasSettings
     public string OllamaModel { get; init; } = DefaultOllamaModel;
     public string OllamaEndpoint { get; init; } = DefaultOllamaEndpoint;
 
+    /// <summary>
+    /// Validates the settings and returns the value that should be persisted.
+    /// The Ollama model and endpoint are only enforced when Ollama is the selected
+    /// provider; with any other provider a stale or blank value falls back to its
+    /// default instead of rejecting the whole configuration.
+    /// </summary>
     public AtlasSettings Validate()
     {
         if (PreferredProvider is not ("Gemini" or "Ollama" or "Hermes"))
@@ -22,14 +28,42 @@ public sealed record AtlasSettings
         if (EnableCloudRequests && PreferredProvider != "Gemini")
             throw new ArgumentException("Solicitações em nuvem só podem usar o provedor Gemini.");
 
-        if (string.IsNullOrWhiteSpace(OllamaModel) || OllamaModel.Length > 128)
+        var usesOllama = PreferredProvider == "Ollama";
+        var model = usesOllama ? RequireOllamaModel(OllamaModel) : NormalizeOllamaModel(OllamaModel);
+        var endpoint = usesOllama ? RequireLoopbackEndpoint(OllamaEndpoint) : NormalizeOllamaEndpoint(OllamaEndpoint);
+
+        if (string.Equals(model, OllamaModel, StringComparison.Ordinal) &&
+            string.Equals(endpoint, OllamaEndpoint, StringComparison.Ordinal))
+            return this;
+
+        return this with { OllamaModel = model, OllamaEndpoint = endpoint };
+    }
+
+    private static string RequireOllamaModel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 128)
             throw new ArgumentException("Nome de modelo Ollama inválido.", nameof(OllamaModel));
 
-        if (!Uri.TryCreate(OllamaEndpoint, UriKind.Absolute, out var endpoint) ||
-            endpoint.Scheme != Uri.UriSchemeHttp ||
-            !endpoint.IsLoopback)
-            throw new ArgumentException("O Ollama deve usar um endereço HTTP local (localhost ou loopback).", nameof(OllamaEndpoint));
-
-        return this;
+        return value;
     }
+
+    private static string RequireLoopbackEndpoint(string? value)
+    {
+        if (!IsLoopbackHttpEndpoint(value))
+            throw new ArgumentException(
+                "O Ollama deve usar um endereço HTTP local (localhost ou loopback).", nameof(OllamaEndpoint));
+
+        return value!;
+    }
+
+    private static string NormalizeOllamaModel(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.Length > 128 ? DefaultOllamaModel : value;
+
+    private static string NormalizeOllamaEndpoint(string? value) =>
+        IsLoopbackHttpEndpoint(value) ? value! : DefaultOllamaEndpoint;
+
+    private static bool IsLoopbackHttpEndpoint(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var endpoint) &&
+        endpoint.Scheme == Uri.UriSchemeHttp &&
+        endpoint.IsLoopback;
 }

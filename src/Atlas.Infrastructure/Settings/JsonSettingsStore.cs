@@ -22,22 +22,40 @@ public sealed class JsonSettingsStore : ISettingsStore
             "settings.json");
     }
 
+    /// <summary>
+    /// Paths the unreadable file was moved to during the last load, if any. Lets the
+    /// caller report that local preferences were reset instead of failing to start.
+    /// </summary>
+    public string? QuarantinedFilePath { get; private set; }
+
     public async Task<AtlasSettings> LoadAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            QuarantinedFilePath = null;
             if (!File.Exists(_filePath))
                 return new AtlasSettings();
 
-            await using var stream = new FileStream(
-                _filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            try
+            {
+                await using var stream = new FileStream(
+                    _filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-            var settings = await JsonSerializer.DeserializeAsync<AtlasSettings>(
-                stream, JsonOptions, cancellationToken);
+                var settings = await JsonSerializer.DeserializeAsync<AtlasSettings>(
+                    stream, JsonOptions, cancellationToken);
 
-            return (settings ?? new AtlasSettings()).Validate();
+                return (settings ?? new AtlasSettings()).Validate();
+            }
+            catch (Exception exception) when (exception is JsonException or ArgumentException or NotSupportedException)
+            {
+                // A truncated file (power loss), a hand-edited value or a file written by
+                // an older build must not lock the user out of every preference: keep the
+                // unusable copy for inspection and start from the defaults.
+                QuarantineUnreadableSettings();
+                return new AtlasSettings();
+            }
         }
         finally
         {
@@ -48,7 +66,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     public async Task SaveAsync(AtlasSettings settings, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        settings.Validate();
+        settings = settings.Validate();
 
         await _gate.WaitAsync(cancellationToken);
         var temporaryPath = _filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -79,6 +97,21 @@ public sealed class JsonSettingsStore : ISettingsStore
             {
                 _gate.Release();
             }
+        }
+    }
+
+    private void QuarantineUnreadableSettings()
+    {
+        try
+        {
+            var quarantined = _filePath + ".invalid-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff");
+            File.Move(_filePath, quarantined, overwrite: true);
+            QuarantinedFilePath = quarantined;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Reading may have failed for a transient reason (locked file). Leaving the
+            // file in place keeps the user's data for a later attempt.
         }
     }
 }
