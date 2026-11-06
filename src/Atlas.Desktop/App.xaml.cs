@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -91,7 +90,6 @@ public partial class App : Microsoft.UI.Xaml.Application
     /// (including the inner exceptions a XamlParseException carries) and the log
     /// location, then terminates instead of leaving a silent crash behind.
     /// </summary>
-    [DoesNotReturn]
     private static void ShowStartupFailure(Exception exception)
     {
         var logPath = GetDiagnosticLogPath();
@@ -158,7 +156,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
             try
             {
-                var dictionary = Application.Current?.Resources;
+                // Qualified: inside Atlas.Desktop the simple name Application binds to the
+                // sibling Atlas.Application namespace instead of the WinUI type.
+                var dictionary = global::Microsoft.UI.Xaml.Application.Current?.Resources;
                 if (dictionary is null)
                 {
                     report.AppendLine("App resources: Application.Current.Resources is null");
