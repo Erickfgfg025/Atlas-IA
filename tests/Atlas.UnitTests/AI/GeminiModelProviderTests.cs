@@ -107,6 +107,23 @@ public sealed class GeminiModelProviderTests
         Assert.Contains("SAFETY", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task StripsWhitespaceFromStoredApiKeyBeforeBuildingTheHeader()
+    {
+        var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""",
+                Encoding.UTF8, "application/json")
+        });
+        // A key copied from a web page can keep line breaks and stray spaces.
+        var provider = new GeminiModelProvider(new HttpClient(handler), new StubSecretStore("  AIza\nsecret\t"));
+
+        await provider.GenerateAsync(new ModelRequest("Oi"), CancellationToken.None);
+
+        Assert.Equal("AIzasecret", handler.LastApiKey);
+    }
+
     private sealed class StubSecretStore(string? secret) : ISecretStore
     {
         public Task SetAsync(string key, string value, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -118,10 +135,14 @@ public sealed class GeminiModelProviderTests
     {
         public string LastRequestUri { get; private set; } = string.Empty;
         public string LastRequestBody { get; private set; } = string.Empty;
+        public string LastApiKey { get; private set; } = string.Empty;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequestUri = request.RequestUri?.ToString() ?? string.Empty;
+            LastApiKey = request.Headers.TryGetValues("x-goog-api-key", out var values)
+                ? string.Join(",", values)
+                : string.Empty;
             if (request.Content is not null)
                 LastRequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
             return responseFactory(request);
