@@ -37,13 +37,25 @@ public sealed partial class MainWindow : Window
         try
         {
             await _viewModel.InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            App.WriteStartupDiagnostic("MainWindow.Loaded", exception);
+            _viewModel.StatusMessage = "Não foi possível carregar as preferências locais. Consulte o registro local.";
+        }
+
+        // Startup and z-order are best-effort Windows integrations: failing to apply
+        // them must not hide the settings that did load successfully.
+        try
+        {
             new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
             WindowZOrder.SetAlwaysOnTop(WindowNative.GetWindowHandle(this), _viewModel.KeepWindowOnTop);
         }
         catch (Exception exception)
         {
-            App.WriteStartupDiagnostic("MainWindow.Loaded", exception);
-            _viewModel.StatusMessage = "Não foi possível carregar ou aplicar as preferências locais. Consulte o registro local.";
+            App.WriteStartupDiagnostic("MainWindow.Loaded.Windows", exception);
+            _viewModel.StatusMessage =
+                "Não foi possível aplicar a inicialização com o Windows ou o modo sempre visível.";
         }
     }
 
@@ -196,7 +208,17 @@ public sealed partial class MainWindow : Window
 
     private async void OpenMemory_Click(object sender, RoutedEventArgs e)
     {
-        await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+        try
+        {
+            await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+        }
+        catch (Exception exception)
+        {
+            // An unhandled exception in an async void handler terminates the process.
+            App.WriteStartupDiagnostic("MainWindow.MemoryRefresh", exception);
+            _viewModel.StatusMessage = "Não foi possível carregar as memórias locais.";
+            return;
+        }
 
         var search = new TextBox
         {
@@ -230,16 +252,32 @@ public sealed partial class MainWindow : Window
         var searchButton = new Button { Content = "Buscar", MinWidth = 82 };
         searchButton.Click += async (_, _) =>
         {
-            _viewModel.MemorySearchQuery = search.Text;
-            await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+            try
+            {
+                _viewModel.MemorySearchQuery = search.Text;
+                await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemorySearch", exception);
+                _viewModel.StatusMessage = "Não foi possível buscar as memórias locais.";
+            }
         };
         var saveButton = new Button { Content = "Salvar alterações" };
         saveButton.Click += async (_, _) =>
         {
-            _viewModel.SelectedMemoryTitle = title.Text;
-            _viewModel.SelectedMemoryContent = body.Text;
-            await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
-            list.SelectedItem = _viewModel.SelectedMemory;
+            try
+            {
+                _viewModel.SelectedMemoryTitle = title.Text;
+                _viewModel.SelectedMemoryContent = body.Text;
+                await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
+                list.SelectedItem = _viewModel.SelectedMemory;
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemorySave", exception);
+                _viewModel.StatusMessage = "Não foi possível salvar as alterações da memória.";
+            }
         };
         var confirmDelete = new CheckBox
         {
@@ -260,16 +298,33 @@ public sealed partial class MainWindow : Window
                 _viewModel.StatusMessage = "Marque a confirmação antes de excluir a memória.";
                 return;
             }
-            await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
-            confirmDelete.IsChecked = false;
-            confirmDelete.IsEnabled = false;
-            title.Text = string.Empty;
-            body.Text = string.Empty;
+
+            try
+            {
+                await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
+                confirmDelete.IsChecked = false;
+                confirmDelete.IsEnabled = false;
+                title.Text = string.Empty;
+                body.Text = string.Empty;
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemoryDelete", exception);
+                _viewModel.StatusMessage = "Não foi possível excluir a memória.";
+            }
         };
         var rebuildButton = new Button { Content = "Reconstruir índice" };
         rebuildButton.Click += async (_, _) =>
         {
-            await _viewModel.RebuildMemoryIndexCommand.ExecuteAsync(null);
+            try
+            {
+                await _viewModel.RebuildMemoryIndexCommand.ExecuteAsync(null);
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemoryRebuild", exception);
+                _viewModel.StatusMessage = "Não foi possível reconstruir o índice da memória.";
+            }
         };
 
         var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
