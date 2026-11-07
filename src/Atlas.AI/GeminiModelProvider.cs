@@ -18,8 +18,12 @@ public sealed class GeminiModelProvider(HttpClient httpClient, ISecretStore secr
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Prompt);
 
-        var apiKey = await secretStore.GetAsync("gemini-api-key", cancellationToken);
-        if (string.IsNullOrWhiteSpace(apiKey))
+        // A key pasted from a web page can carry line breaks or stray spaces; they are
+        // not part of the key and would make the HTTP header invalid.
+        var apiKey = new string((await secretStore.GetAsync("gemini-api-key", cancellationToken) ?? string.Empty)
+            .Where(character => !char.IsWhiteSpace(character))
+            .ToArray());
+        if (apiKey.Length == 0)
             throw new InvalidOperationException("Configure a chave da API Gemini nas configurações seguras do Atlas.");
 
         var contents = (request.History ?? [])

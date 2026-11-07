@@ -37,13 +37,25 @@ public sealed partial class MainWindow : Window
         try
         {
             await _viewModel.InitializeAsync();
+        }
+        catch (Exception exception)
+        {
+            App.WriteStartupDiagnostic("MainWindow.Loaded", exception);
+            _viewModel.StatusMessage = "Não foi possível carregar as preferências locais. Consulte o registro local.";
+        }
+
+        // Startup and z-order are best-effort Windows integrations: failing to apply
+        // them must not hide the settings that did load successfully.
+        try
+        {
             new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
             WindowZOrder.SetAlwaysOnTop(WindowNative.GetWindowHandle(this), _viewModel.KeepWindowOnTop);
         }
         catch (Exception exception)
         {
-            App.WriteStartupDiagnostic("MainWindow.Loaded", exception);
-            _viewModel.StatusMessage = "Não foi possível carregar ou aplicar as preferências locais. Consulte o registro local.";
+            App.WriteStartupDiagnostic("MainWindow.Loaded.Windows", exception);
+            _viewModel.StatusMessage =
+                "Não foi possível aplicar a inicialização com o Windows ou o modo sempre visível.";
         }
     }
 
@@ -70,17 +82,13 @@ public sealed partial class MainWindow : Window
         }
         catch (UnauthorizedAccessException)
         {
-            _voiceEnabled = false;
-            VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = "Permita o acesso ao microfone nas configurações de privacidade do Windows.";
+            DisableVoice("Permita o acesso ao microfone nas configurações de privacidade do Windows.");
         }
         catch (Exception exception)
         {
-            _voiceEnabled = false;
-            VoiceButton.Content = "Voz";
-            _viewModel.StatusMessage = exception is InvalidOperationException
+            DisableVoice(exception is InvalidOperationException
                 ? exception.Message
-                : "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala pt-BR.";
+                : "Não foi possível iniciar o reconhecimento. Verifique o microfone e o pacote de fala pt-BR.");
         }
     }
 
@@ -95,19 +103,73 @@ public sealed partial class MainWindow : Window
                 _viewModel.StatusMessage = "Entendi. Estou pensando...";
                 await _voice.StopListeningAsync();
                 await _viewModel.SubmitVoiceTextAsync(text);
-                if (!_voiceEnabled) return;
-                await _voice.SpeakAsync(_viewModel.AssistantResponse);
-                // Listening resumes only after playback ends, avoiding TTS feedback.
+            }
+            catch (InvalidOperationException exception)
+            {
+                // The chat is busy or not ready: keep voice mode enabled and listen
+                // again instead of disabling it permanently for a transient conflict.
+                _viewModel.StatusMessage = exception.Message;
+                await ResumeListeningAfterTurnAsync();
+                return;
             }
             catch (Exception)
             {
-                _viewModel.StatusMessage = "O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.";
-                _voiceEnabled = false;
+                DisableVoice("O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.");
+                return;
+            }
+
+            if (!_voiceEnabled)
+            {
                 _processingVoice = false;
-                VoiceButton.Content = "Voz";
-                _voice.InterruptSpeech();
+                return;
+            }
+
+            var response = _viewModel.AssistantResponse;
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                // PlaybackCompleted never fires without audio, which would leave
+                // _processingVoice stuck and the microphone off forever.
+                await ResumeListeningAfterTurnAsync();
+                return;
+            }
+
+            try
+            {
+                await _voice.SpeakAsync(response);
+                // Listening resumes only after playback ends, avoiding TTS feedback.
+            }
+            catch (InvalidOperationException exception)
+            {
+                DisableVoice(exception.Message);
+            }
+            catch (Exception)
+            {
+                DisableVoice("O ciclo de voz falhou. Verifique a conexão, o provedor e o áudio.");
             }
         });
+    }
+
+    private async Task ResumeListeningAfterTurnAsync()
+    {
+        _processingVoice = false;
+        if (!_voiceEnabled) return;
+        try
+        {
+            await _voice.StartListeningAsync();
+        }
+        catch (Exception)
+        {
+            DisableVoice("Não consegui reativar o microfone. Toque em Voz para tentar novamente.");
+        }
+    }
+
+    private void DisableVoice(string status)
+    {
+        _voiceEnabled = false;
+        _processingVoice = false;
+        VoiceButton.Content = "Voz";
+        _viewModel.StatusMessage = status;
+        _voice.InterruptSpeech();
     }
 
     private void OnSpeechPlaybackCompleted()
@@ -115,18 +177,7 @@ public sealed partial class MainWindow : Window
         DispatcherQueue.TryEnqueue(async () =>
         {
             if (!_voiceEnabled) return;
-            try
-            {
-                _processingVoice = false;
-                await _voice.StartListeningAsync();
-            }
-            catch (Exception)
-            {
-                _voiceEnabled = false;
-                _processingVoice = false;
-                VoiceButton.Content = "Voz";
-                _viewModel.StatusMessage = "Não consegui reativar o microfone. Toque em Voz para tentar novamente.";
-            }
+            await ResumeListeningAfterTurnAsync();
         });
     }
 
@@ -143,13 +194,31 @@ public sealed partial class MainWindow : Window
         _voice.Recognized -= OnVoiceRecognized;
         _voice.StatusChanged -= OnVoiceStatusChanged;
         _voice.PlaybackCompleted -= OnSpeechPlaybackCompleted;
-        await _voice.DisposeAsync();
+        try
+        {
+            await _voice.DisposeAsync();
+        }
+        catch (Exception exception)
+        {
+            // An async void handler must never crash the process while closing.
+            App.WriteStartupDiagnostic("MainWindow.Closed", exception);
+        }
     }
 
 
     private async void OpenMemory_Click(object sender, RoutedEventArgs e)
     {
-        await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+        try
+        {
+            await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+        }
+        catch (Exception exception)
+        {
+            // An unhandled exception in an async void handler terminates the process.
+            App.WriteStartupDiagnostic("MainWindow.MemoryRefresh", exception);
+            _viewModel.StatusMessage = "Não foi possível carregar as memórias locais.";
+            return;
+        }
 
         var search = new TextBox
         {
@@ -183,16 +252,32 @@ public sealed partial class MainWindow : Window
         var searchButton = new Button { Content = "Buscar", MinWidth = 82 };
         searchButton.Click += async (_, _) =>
         {
-            _viewModel.MemorySearchQuery = search.Text;
-            await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+            try
+            {
+                _viewModel.MemorySearchQuery = search.Text;
+                await _viewModel.RefreshMemoriesCommand.ExecuteAsync(null);
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemorySearch", exception);
+                _viewModel.StatusMessage = "Não foi possível buscar as memórias locais.";
+            }
         };
         var saveButton = new Button { Content = "Salvar alterações" };
         saveButton.Click += async (_, _) =>
         {
-            _viewModel.SelectedMemoryTitle = title.Text;
-            _viewModel.SelectedMemoryContent = body.Text;
-            await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
-            list.SelectedItem = _viewModel.SelectedMemory;
+            try
+            {
+                _viewModel.SelectedMemoryTitle = title.Text;
+                _viewModel.SelectedMemoryContent = body.Text;
+                await _viewModel.SaveSelectedMemoryCommand.ExecuteAsync(null);
+                list.SelectedItem = _viewModel.SelectedMemory;
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemorySave", exception);
+                _viewModel.StatusMessage = "Não foi possível salvar as alterações da memória.";
+            }
         };
         var confirmDelete = new CheckBox
         {
@@ -213,16 +298,33 @@ public sealed partial class MainWindow : Window
                 _viewModel.StatusMessage = "Marque a confirmação antes de excluir a memória.";
                 return;
             }
-            await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
-            confirmDelete.IsChecked = false;
-            confirmDelete.IsEnabled = false;
-            title.Text = string.Empty;
-            body.Text = string.Empty;
+
+            try
+            {
+                await _viewModel.DeleteSelectedMemoryCommand.ExecuteAsync(null);
+                confirmDelete.IsChecked = false;
+                confirmDelete.IsEnabled = false;
+                title.Text = string.Empty;
+                body.Text = string.Empty;
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemoryDelete", exception);
+                _viewModel.StatusMessage = "Não foi possível excluir a memória.";
+            }
         };
         var rebuildButton = new Button { Content = "Reconstruir índice" };
         rebuildButton.Click += async (_, _) =>
         {
-            await _viewModel.RebuildMemoryIndexCommand.ExecuteAsync(null);
+            try
+            {
+                await _viewModel.RebuildMemoryIndexCommand.ExecuteAsync(null);
+            }
+            catch (Exception exception)
+            {
+                App.WriteStartupDiagnostic("MainWindow.MemoryRebuild", exception);
+                _viewModel.StatusMessage = "Não foi possível reconstruir o índice da memória.";
+            }
         };
 
         var searchRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -247,7 +349,18 @@ public sealed partial class MainWindow : Window
             CloseButtonText = "Fechar",
             XamlRoot = RootLayout.XamlRoot
         };
-        await dialog.ShowAsync();
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            // WinUI throws when a second ContentDialog opens while another is still
+            // showing; an unhandled exception from an async void handler would kill
+            // the process on a rapid double-click.
+            App.WriteStartupDiagnostic("MainWindow.MemoryDialog", exception);
+            _viewModel.StatusMessage = "Não foi possível abrir o diálogo de memórias.";
+        }
     }
 
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
@@ -336,7 +449,19 @@ public sealed partial class MainWindow : Window
             XamlRoot = RootLayout.XamlRoot
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        ContentDialogResult dialogResult;
+        try
+        {
+            dialogResult = await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            App.WriteStartupDiagnostic("MainWindow.SettingsDialog", exception);
+            _viewModel.StatusMessage = "Não foi possível abrir o diálogo de configurações.";
+            return;
+        }
+
+        if (dialogResult != ContentDialogResult.Primary) return;
 
         _viewModel.PreferredProvider = provider.SelectedItem?.ToString() ?? "Gemini";
         _viewModel.EnableCloudRequests = allowCloud.IsOn;
@@ -346,16 +471,6 @@ public sealed partial class MainWindow : Window
         _viewModel.StartWithWindows = startWithWindows.IsOn;
         _viewModel.KeepWindowOnTop = keepOnTop.IsOn;
 
-        if (!string.IsNullOrWhiteSpace(apiKey.Password))
-        {
-            try { await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password); }
-            catch (Exception)
-            {
-                _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows.";
-                return;
-            }
-        }
-
         try
         {
             new StartupRegistration().SetEnabled(_viewModel.StartWithWindows);
@@ -364,7 +479,22 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception)
         {
-            _viewModel.StatusMessage = "Não foi possível aplicar as preferências de inicialização ou janela."; 
+            _viewModel.StatusMessage = "Não foi possível aplicar as preferências de inicialização ou janela.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey.Password)) return;
+
+        // The key is stored last so a storage failure cannot discard the other
+        // preference changes the user just confirmed.
+        try
+        {
+            await _viewModel.SaveGeminiApiKeyAsync(apiKey.Password);
+        }
+        catch (Exception)
+        {
+            _viewModel.StatusMessage = "Não foi possível armazenar a chave no Windows. " +
+                                       "As demais preferências foram aplicadas nesta sessão.";
         }
     }
 }

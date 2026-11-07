@@ -20,3 +20,6 @@ AtlasMemory/
 # Packaging
 AppPackages/
 BundleArtifacts/
+
+# Local build and packaging output
+artifacts/

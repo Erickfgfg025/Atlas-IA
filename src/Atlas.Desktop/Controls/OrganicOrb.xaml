@@ -12,8 +12,8 @@
                 <Path.Stroke>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#00000000" Offset="0"/>
-                        <GradientStop Color="#9B55E8" Offset="0.32"/>
-                        <GradientStop Color="#B86BFF" Offset="0.58"/>
+                        <GradientStop Color="#C96F1B" Offset="0.32"/>
+                        <GradientStop Color="#F28C28" Offset="0.58"/>
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>
@@ -24,9 +24,9 @@
                 <Path.Stroke>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#00000000" Offset="0"/>
-                        <GradientStop Color="#A45BFF" Offset="0.25"/>
-                        <GradientStop Color="#F1D9FF" Offset="0.49"/>
-                        <GradientStop Color="#8E45D8" Offset="0.72"/>
+                        <GradientStop Color="#F28C28" Offset="0.25"/>
+                        <GradientStop Color="#FFD9A8" Offset="0.49"/>
+                        <GradientStop Color="#C96F1B" Offset="0.72"/>
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>
@@ -37,9 +37,9 @@
                 <Path.Stroke>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#00000000" Offset="0"/>
-                        <GradientStop Color="#A85EFF" Offset="0.36"/>
-                        <GradientStop Color="#F8E8FF" Offset="0.52"/>
-                        <GradientStop Color="#A85EFF" Offset="0.7"/>
+                        <GradientStop Color="#FFB35C" Offset="0.36"/>
+                        <GradientStop Color="#FFF1E0" Offset="0.52"/>
+                        <GradientStop Color="#FFB35C" Offset="0.7"/>
                         <GradientStop Color="#00000000" Offset="1"/>
                     </LinearGradientBrush>
                 </Path.Stroke>

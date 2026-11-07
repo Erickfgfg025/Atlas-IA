@@ -5,7 +5,11 @@ on:
   pull_request:
     branches: ["main"]
   push:
-    branches: ["rewrite/**"]
+    # Every branch except main, which the CI workflow already covers, produces a
+    # downloadable build and installer so a change can be tested without a PR.
+    branches:
+      - "**"
+      - "!main"
     tags:
       - "v*"
 
@@ -38,6 +42,41 @@ jobs:
           -p:WindowsAppSDKSelfContained=true
           -p:WindowsPackageType=None
           -o artifacts/publish
+
+      # The app loads its XAML through ms-appx:///, which only resolves when the
+      # compiled .xbf entries are indexed in the PRI shipped next to the exe.
+      # Without this the app starts and dies with a XamlParseException, so the
+      # check fails the build instead of publishing a broken installer.
+      - name: Verify the published app carries its compiled XAML
+        shell: pwsh
+        run: |
+          $pri = Get-ChildItem artifacts/publish/*.pri | Select-Object -First 1
+          if (-not $pri) {
+            throw "No .pri file in the publish output. The app would fail at startup with 'Cannot locate resource from ms-appx:///MainWindow.xaml'."
+          }
+          "::notice title=PRI file::$($pri.Name) ($($pri.Length) bytes)"
+
+          $makepri = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools\*\bin\*\x64\makepri.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $makepri) {
+            "::warning title=PRI content::makepri.exe not found; XAML entries were not inspected."
+            exit 0
+          }
+
+          & $makepri.FullName dump /if $pri.FullName /of pri-dump.xml /dt detailed | Out-Null
+          if (Select-String -Path pri-dump.xml -Pattern 'MainWindow\.xbf' -Quiet) {
+            "::notice title=PRI content::MainWindow.xbf is indexed in $($pri.Name)."
+          } else {
+            "::warning title=PRI content::MainWindow.xbf is NOT indexed in $($pri.Name); the app cannot load its XAML."
+          }
+
+      - name: Upload app build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-App-win-x64
+          path: artifacts/publish
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress

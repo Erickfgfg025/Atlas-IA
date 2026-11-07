@@ -32,8 +32,61 @@ public sealed class AtlasSettingsTests
     [Fact]
     public void RejectsNonLoopbackOllamaEndpoint()
     {
-        var settings = new AtlasSettings { OllamaEndpoint = "http://example.com:11434/" };
+        var settings = new AtlasSettings
+        {
+            PreferredProvider = "Ollama",
+            OllamaEndpoint = "http://example.com:11434/"
+        };
+
         Assert.Throws<ArgumentException>(() => settings.Validate());
+    }
+
+    [Fact]
+    public void RejectsBlankOllamaModelWhenOllamaIsSelected()
+    {
+        var settings = new AtlasSettings
+        {
+            PreferredProvider = "Ollama",
+            OllamaModel = "  "
+        };
+
+        Assert.Throws<ArgumentException>(() => settings.Validate());
+    }
+
+    [Fact]
+    public void ReplacesUnusedOllamaFieldsWithDefaultsInsteadOfFailing()
+    {
+        // A stale Ollama endpoint must not block saving or loading every other
+        // preference while Gemini or Hermes is the selected provider.
+        var settings = new AtlasSettings
+        {
+            PreferredProvider = "Hermes",
+            EnableMemoryContext = true,
+            OllamaModel = string.Empty,
+            OllamaEndpoint = "http://example.com:11434/"
+        };
+
+        var validated = settings.Validate();
+
+        Assert.Equal(AtlasSettings.DefaultOllamaModel, validated.OllamaModel);
+        Assert.Equal(AtlasSettings.DefaultOllamaEndpoint, validated.OllamaEndpoint);
+        Assert.True(validated.EnableMemoryContext);
+    }
+
+    [Fact]
+    public void KeepsOllamaFieldsUntouchedWhenTheyAreAlreadyValid()
+    {
+        var settings = new AtlasSettings
+        {
+            PreferredProvider = "Ollama",
+            OllamaModel = "qwen2.5:3b",
+            OllamaEndpoint = "http://localhost:11434/"
+        };
+
+        var validated = settings.Validate();
+
+        Assert.Equal("qwen2.5:3b", validated.OllamaModel);
+        Assert.Equal("http://localhost:11434/", validated.OllamaEndpoint);
     }
 
     [Fact]

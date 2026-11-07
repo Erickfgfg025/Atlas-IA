@@ -26,3 +26,13 @@ jobs:
         run: dotnet test Atlas.sln --no-build -c Release --logger "console;verbosity=normal"
       - name: Publish Windows x64 app
         run: dotnet publish src/Atlas.Desktop/Atlas.Desktop.csproj -c Release -r win-x64 --self-contained true -p:WindowsAppSDKSelfContained=true -p:WindowsPackageType=None -o artifacts/publish
+
+      # Every run leaves a runnable build behind, so a branch can be tried
+      # without opening a pull request first.
+      - name: Upload app build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-App-win-x64
+          path: artifacts/publish
+          if-no-files-found: error
+          retention-days: 14
