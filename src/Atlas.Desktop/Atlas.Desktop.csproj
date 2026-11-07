@@ -4,7 +4,14 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>false</EnableMsixTooling>
+    <!--
+      Must stay true even though the app ships unpackaged (WindowsPackageType=None).
+      The MSIX tooling carries the PRI/MRT resource pipeline: with it disabled the
+      published app has no resources.pri entry for the compiled .xbf files, and
+      MainWindow.InitializeComponent throws XamlParseException "Cannot locate
+      resource from 'ms-appx:///MainWindow.xaml'" at startup.
+    -->
+    <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained Condition="'$(RuntimeIdentifier)' != ''">true</WindowsAppSDKSelfContained>
     <PublishTrimmed>false</PublishTrimmed>
